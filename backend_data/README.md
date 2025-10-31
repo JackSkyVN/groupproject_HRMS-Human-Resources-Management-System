@@ -6,12 +6,12 @@
 ```powershell
 python -m venv .venv
 . .venv/Scripts/Activate.ps1
-pip install -r backend/requirements.txt
+pip install -r backend_data/requirements.txt
 ```
 
 2) Run the API locally
 ```powershell
-uvicorn backend.app.main:app --reload
+uvicorn backend_data.app.main:app --reload
 ```
 
 3) Health check
