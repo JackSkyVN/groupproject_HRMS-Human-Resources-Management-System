@@ -3,10 +3,18 @@
     padding: 0;
     box-sizing: border-box;
 }
+@keyframes popIn {
+    0% { opacity: 0; transform: scale(0.8); }
+    100% { opacity: 1; transform: scale(1); }
+}
+.auth-buttons .btn,
+.submit-btn {
+    animation: popIn 0.5s ease forwards;
+}
 
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background-image: url('img1.jpg'); 
+    background-image: url('img1.avif'); 
     background-size: cover;
     background-position: center;
     min-height: 100vh;
@@ -23,6 +31,7 @@ header {
     justify-content: space-between;
     align-items: center;
     padding: 20px 50px;
+    margin: 0;
 }
 
 .logo {
@@ -205,4 +214,26 @@ form {
 }
 .form-container.hidden {
     display: none;
+}
+.auth-buttons .btn,
+.submit-btn {
+    transition: all 0.25s ease, transform 0.2s ease;
+}
+
+.auth-buttons .btn:hover,
+.submit-btn:hover {
+    transform: translateY(-3px) scale(1.05);
+    box-shadow: 0 8px 20px rgba(255, 255, 255, 0.25);
+}
+.auth-buttons .btn:active,
+.submit-btn:active {
+    transform: scale(0.97);
+}
+.input-group input {
+    transition: 0.25s ease;
+}
+
+.input-group input:focus {
+    background: rgba(255, 255, 255, 0.25);
+    transform: scale(1.02);
 }
