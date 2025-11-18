@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Portal - HR Management System</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Sidebar -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <h1>Employee Portal</h1>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <ul>
+                    <li>
+                        <button class="nav-item active" data-view="chat">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"></path>
+                            </svg>
+                            <span>Team Chat</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-item" data-view="announcements">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M12 2a10 10 0 0 1 7.38 16.75L12 12V2z"></path>
+                                <path d="M12 8v13"></path>
+                                <path d="M12 2v6"></path>
+                            </svg>
+                            <span>Announcements</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-item" data-view="assignments">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                                <rect x="9" y="3" width="6" height="4" rx="2"></rect>
+                                <path d="M9 12h6"></path>
+                                <path d="M9 16h6"></path>
+                            </svg>
+                            <span>Work Assignments</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-item" data-view="time">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <circle cx="12" cy="12" r="10"></circle>
+                                <polyline points="12 6 12 12 16 14"></polyline>
+                            </svg>
+                            <span>Time Tracking</span>
+                        </button>
+                    </li>
+                    <li>
+                        <button class="nav-item" data-view="payroll">
+                            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <line x1="12" y1="1" x2="12" y2="23"></line>
+                                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                            </svg>
+                            <span>Payroll</span>
+                        </button>
+                    </li>
+                </ul>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar">JD</div>
+                    <div class="user-info">
+                        <p class="user-name">John Doe</p>
+                        <p class="user-role">Software Engineer</p>
+                    </div>
+                    <button class="settings-btn" id="settingsBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"></circle>
+                            <path d="M12 1v6m0 6v6m5.2-13.2 4.2-4.2m-4.2 4.2-4.2-4.2M1 12h6m6 0h6m-13.2 5.2 4.2 4.2m-4.2-4.2-4.2 4.2"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Team Chat View -->
+            <div class="view-container active" id="chatView">
+                <div class="chat-layout">
+                    <!-- Channels Sidebar -->
+                    <div class="channels-sidebar">
+                        <div class="channels-header">
+                            <h2>Workspace</h2>
+                        </div>
+                        <div class="channels-content">
+                            <div class="channel-section">
+                                <div class="section-header">
+                                    <span>Channels</span>
+                                    <button class="add-btn">+</button>
+                                </div>
+                                <ul class="channel-list">
+                                    <li><button class="channel-item active" data-channel="general"># general</button></li>
+                                    <li><button class="channel-item" data-channel="team-updates"># team-updates</button></li>
+                                    <li><button class="channel-item" data-channel="projects"># projects</button></li>
+                                    <li><button class="channel-item" data-channel="random"># random</button></li>
+                                </ul>
+                            </div>
+                            <div class="channel-section">
+                                <div class="section-header">
+                                    <span>Direct Messages</span>
+                                    <button class="add-btn">+</button>
+                                </div>
+                                <ul class="channel-list">
+                                    <li><button class="channel-item" data-channel="dm-sarah"><span class="status-dot"></span> Sarah Miller</button></li>
+                                    <li><button class="channel-item" data-channel="dm-mike"><span class="status-dot"></span> Mike Johnson</button></li>
+                                    <li><button class="channel-item" data-channel="dm-emma"><span class="status-dot"></span> Emma Davis</button></li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Chat Area -->
+                    <div class="chat-area">
+                        <div class="chat-header">
+                            <h2># <span id="currentChannel">general</span></h2>
+                        </div>
+                        <div class="messages-container" id="messagesContainer">
+                            <!-- Messages will be inserted here -->
+                        </div>
+                        <div class="message-input-container">
+                            <input type="text" id="messageInput" placeholder="Type a message..." class="message-input">
+                            <button id="sendMessageBtn" class="send-btn">
+                                <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                    <line x1="22" y1="2" x2="11" y2="13"></line>
+                                    <polygon points="22 2 15 22 11 13 2 9 22 2"></polygon>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Announcements View -->
+            <div class="view-container" id="announcementsView">
+                <div class="view-header">
+                    <div class="header-left">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2a10 10 0 0 1 7.38 16.75L12 12V2z"></path>
+                        </svg>
+                        <h1>Announcements</h1>
+                    </div>
+                    <button class="btn btn-primary" id="addAnnouncementBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        New Announcement
+                    </button>
+                </div>
+                <div class="view-content">
+                    <div id="announcementsList" class="announcements-list">
+                        <!-- Announcements will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Work Assignments View -->
+            <div class="view-container" id="assignmentsView">
+                <div class="view-header">
+                    <div class="header-left">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"></path>
+                            <rect x="9" y="3" width="6" height="4" rx="2"></rect>
+                        </svg>
+                        <h1>Work Assignments</h1>
+                    </div>
+                    <button class="btn btn-primary" id="addAssignmentBtn">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="5" x2="12" y2="19"></line>
+                            <line x1="5" y1="12" x2="19" y2="12"></line>
+                        </svg>
+                        Assign Work
+                    </button>
+                </div>
+                <div class="view-content">
+                    <div class="tabs">
+                        <button class="tab-btn active" data-status="all">All</button>
+                        <button class="tab-btn" data-status="pending">Pending</button>
+                        <button class="tab-btn" data-status="in-progress">In Progress</button>
+                        <button class="tab-btn" data-status="completed">Completed</button>
+                    </div>
+                    <div id="assignmentsList" class="assignments-list">
+                        <!-- Assignments will be inserted here -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Time Tracking View -->
+            <div class="view-container" id="timeView">
+                <div class="view-header">
+                    <div class="header-left">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <polyline points="12 6 12 12 16 14"></polyline>
+                        </svg>
+                        <h1>Time Tracking</h1>
+                    </div>
+                </div>
+                <div class="view-content">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Current Session</h3>
+                        </div>
+                        <div class="card-content">
+                            <div class="time-display">
+                                <div class="time-info">
+                                    <div class="current-time" id="currentTime">00:00:00</div>
+                                    <p class="time-status" id="timeStatus">Not clocked in</p>
+                                    <p class="time-start" id="timeStart"></p>
+                                </div>
+                                <button class="btn btn-clock" id="clockToggleBtn">
+                                    <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                                    </svg>
+                                    Clock In
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Weekly Summary</h3>
+                            <button class="btn btn-outline">Export</button>
+                        </div>
+                        <div class="card-content">
+                            <div class="stats-grid">
+                                <div class="stat-item">
+                                    <p class="stat-label">Total Hours</p>
+                                    <p class="stat-value">42.5h</p>
+                                </div>
+                                <div class="stat-item">
+                                    <p class="stat-label">Days Worked</p>
+                                    <p class="stat-value">5</p>
+                                </div>
+                                <div class="stat-item">
+                                    <p class="stat-label">Average/Day</p>
+                                    <p class="stat-value">8.5h</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Time Entries</h3>
+                        </div>
+                        <div class="card-content">
+                            <div id="timeEntriesList" class="time-entries-list">
+                                <!-- Time entries will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payroll View -->
+            <div class="view-container" id="payrollView">
+                <div class="view-header">
+                    <div class="header-left">
+                        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="12" y1="1" x2="12" y2="23"></line>
+                            <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+                        </svg>
+                        <h1>Payroll</h1>
+                    </div>
+                </div>
+                <div class="view-content">
+                    <div class="stats-cards">
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>Year-to-Date Earnings</h4>
+                            </div>
+                            <div class="card-content">
+                                <p class="stat-large">$9,324</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>Average Monthly Pay</h4>
+                            </div>
+                            <div class="card-content">
+                                <p class="stat-large">$2,331</p>
+                            </div>
+                        </div>
+                        <div class="card">
+                            <div class="card-header">
+                                <h4>Hourly Rate</h4>
+                            </div>
+                            <div class="card-content">
+                                <p class="stat-large">$35/hr</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card current-period">
+                        <div class="card-header">
+                            <h3>Current Pay Period</h3>
+                            <span class="badge badge-processing">Processing</span>
+                        </div>
+                        <div class="card-content">
+                            <div class="payroll-details">
+                                <div class="payroll-item">
+                                    <p class="label">Period</p>
+                                    <p>January 1-15, 2024</p>
+                                </div>
+                                <div class="payroll-item">
+                                    <p class="label">Hours Worked</p>
+                                    <p>80h</p>
+                                </div>
+                                <div class="payroll-item">
+                                    <p class="label">Gross Pay</p>
+                                    <p>$2,800</p>
+                                </div>
+                                <div class="payroll-item">
+                                    <p class="label">Net Pay</p>
+                                    <p class="highlight-green">$2,240</p>
+                                </div>
+                            </div>
+                            <p class="payment-schedule">Payment scheduled for January 20, 2024</p>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>Payroll History</h3>
+                            <button class="btn btn-outline">Export All</button>
+                        </div>
+                        <div class="card-content">
+                            <div id="payrollHistoryList" class="payroll-history-list">
+                                <!-- Payroll history will be inserted here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Profile Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Profile Settings</h3>
+                <button class="modal-close" id="closeSettingsBtn">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="profile-avatar-large">JD</div>
+                <div class="form-group">
+                    <label>Full Name</label>
+                    <input type="text" id="profileName" value="John Doe">
+                </div>
+                <div class="form-group">
+                    <label>Email</label>
+                    <input type="email" id="profileEmail" value="john.doe@company.com">
+                </div>
+                <div class="form-group">
+                    <label>Phone Number</label>
+                    <input type="tel" id="profilePhone" value="+1 (555) 123-4456">
+                </div>
+                <div class="form-group">
+                    <label>Department</label>
+                    <input type="text" id="profileDepartment" value="Engineering">
+                </div>
+                <div class="form-group">
+                    <label>Position</label>
+                    <input type="text" id="profilePosition" value="Software Engineer">
+                </div>
+                <button class="btn btn-primary btn-block" id="saveProfileBtn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
