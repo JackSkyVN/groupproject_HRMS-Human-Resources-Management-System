@@ -1,0 +1,10 @@
+torch
+torchvision
+torchaudio
+facenet-pytorch
+ultralytics
+opencv-python
+pandas
+matplotlib
+onnxruntime
+scikit-learn

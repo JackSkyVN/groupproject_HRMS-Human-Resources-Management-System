@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login & Sign Up</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+</head>
+<body>
+
+    <header>
+        <div class="logo">Finova</div>
+        <nav>
+            <ul>
+                <li><a href="#" class="active">Home</a></li>
+                <li><a href="#">Blog</a></li>
+                <li><a href="#">Services</a></li>
+                <li><a href="#">About</a></li>
+            </ul>
+        </nav>
+        <div class="auth-buttons">
+            <a href="#" class="btn btn-signin show-login">Sign in</a>
+            <a href="#" class="btn btn-signup show-signup">Sign Up</a>
+        </div>
+    </header>
+
+    <main class="form-wrapper">
+
+        <div class="form-container" id="login-form">
+            <p class="toggle-link">Don't have an account? <a href="#" class="show-signup">Sign Up</a></p>
+            <h2>Login</h2>
+            <form action="#">
+                <div class="input-group">
+                    <i class="fas fa-user"></i>
+                    <input type="text" placeholder="Username or Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="submit-btn">Sign In</button>
+                <div class="form-options">
+                    <div class="remember-me">
+                        <input type="checkbox" id="remember-login">
+                        <label for="remember-login">Remember Me</label>
+                    </div>
+                    <a href="#" class="forgot-password">Forgot password?</a>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-container hidden" id="signup-form">
+            <p class="toggle-link">Have an account? <a href="#" class="show-login">Login</a></p>
+            <h2>Sign Up</h2>
+            <form action="#">
+                <div class="name-group">
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="Firstname" required>
+                    </div>
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        <input type="text" placeholder="Lastname" required>
+                    </div>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-envelope"></i>
+                    <input type="email" placeholder="Email" required>
+                </div>
+                <div class="input-group">
+                    <i class="fas fa-lock"></i>
+                    <input type="password" placeholder="Password" required>
+                </div>
+                <button type="submit" class="submit-btn">Register</button>
+                <div class="form-options">
+                    <div class="remember-me">
+                        <input type="checkbox" id="remember-signup">
+                        <label for="remember-signup">Remember Me</label>
+                    </div>
+                    <a href="#" class="forgot-password">Terms & conditions</a>
+                </div>
+            </form>
+        </div>
+
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

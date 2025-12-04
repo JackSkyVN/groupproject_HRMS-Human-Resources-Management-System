@@ -1,55 +1,21 @@
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-*.egg-info/
-dist/
-build/
-
-# Virtual Environment
+# Python venv and caches
 .venv/
-venv/
-ENV/
-env/
+__pycache__/
+*.pyc
 
-# Environment Variables
+# Local environment
 .env
-.env.local
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# Database
-*.db
-*.sqlite
-*.sqlite3
-
-# Backups
-backups/
-*.sql
-*.dump
-
-# Uploads
-uploads/
-*.jpg
-*.jpeg
-*.png
-*.pdf
-
-# Logs
-*.log
-logs/
-
-# OS
+# Editor/OS
 .DS_Store
 Thumbs.db
 
-# Alembic
-alembic/versions/*.pyc
+# Celery runtime DB files (do not commit)
+celerybeat-schedule
+celerybeat-schedule-shm
+celerybeat-schedule-wal
 
+# Backups and Data
+backups/
+*.sql
+*.db
