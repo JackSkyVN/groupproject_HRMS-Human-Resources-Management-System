@@ -16,16 +16,15 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
 
-    cors_origins: str = "http://localhost:5173,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
+    cors_origins: str = "http://localhost:8080,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
 
-    # Email Settings
+    # Cài đặt Email
     MAIL_USERNAME: str = "your_email@example.com"
     MAIL_PASSWORD: str = "your_password"
     MAIL_FROM: str = "your_email@example.com"
     MAIL_PORT: int = 587
     MAIL_SERVER: str = "smtp.gmail.com"
 
-    # Pydantic v2: load from .env and ignore unknown keys
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 settings = Settings()

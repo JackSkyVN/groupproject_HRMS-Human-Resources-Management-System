@@ -12,18 +12,17 @@ from app.api.v1.routes.employee import router as employee_router
 
 
 from app.core.database import Base, engine
-# Import models to ensure they are registered
 import app.models  
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Application lifespan events."""
-    # Startup
+    """Các sự kiện vòng đời ứng dụng."""
+    # Start
     print("HRMS Startup: Creating database tables...")
     Base.metadata.create_all(bind=engine)
     print("HRMS Tables Created.")
     yield
-    # Shutdown
+    # Turndown
     print("HRMS")
 
 
@@ -34,19 +33,23 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# CORS middleware for frontend access
+# CORS middleware cho phép frontend truy cập
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins.split(","),
+    allow_origins=[
+        "http://localhost:8080",
+        "http://127.0.0.1:8080",
+        "http://localhost:3000",
+        "http://127.0.0.1:3000",
+        "http://localhost:5173",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# GZip compression for responses (reduces bandwidth)
 app.add_middleware(GZipMiddleware, minimum_size=1000)
 
-# Request timing middleware (for monitoring)
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
     start_time = time.time()
@@ -55,14 +58,20 @@ async def add_process_time_header(request: Request, call_next):
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-# Routers
+# Router
+from app.api.v1.routes.attendance import router as attendance_router
+from app.api.v1.routes.auth import router as auth_router
+from app.api.v1.routes.system import router as system_router
+from app.api.v1.routes.employee import router as employee_router
+from app.api.v1.routes.leaves import router as leaves_router
+from app.api.v1.routes.payroll import router as payroll_router
+from app.api.v1.routes.announcement import router as announcement_router
+
 app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(attendance_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(system_router, prefix=settings.api_prefix)
 app.include_router(employee_router, prefix=settings.api_prefix, tags=["employees"])
-
-
-
-
-
+app.include_router(leaves_router, prefix=settings.api_prefix, tags=["leaves"])
+app.include_router(payroll_router, prefix=settings.api_prefix, tags=["payroll"])
+app.include_router(announcement_router, prefix=settings.api_prefix, tags=["announcements"])

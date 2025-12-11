@@ -12,7 +12,6 @@ def _get_token_from_auth_header(authorization: str | None) -> str:
     parts = authorization.split()
     if len(parts) == 2 and parts[0].lower() == "bearer":
         return parts[1]
-    # allow raw token as header value too
     if len(parts) == 1:
         return parts[0]
     raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid Authorization header")

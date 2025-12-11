@@ -21,6 +21,7 @@ class LoginRequest(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    roles: list[str] = []
 
 class UserProfileResponse(BaseModel):
     id: int
@@ -30,29 +31,36 @@ class UserProfileResponse(BaseModel):
 class LogoutResponse(BaseModel):
     message: str
 
+# GỌI API
 @router.post("/auth/login", response_model=TokenResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
-    """User login endpoint."""
+    """Endpoint đăng nhập người dùng."""
     user = db.query(User).filter(User.email == data.email).first()
     if not user or not pwd.verify(data.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    # Create JWT token
+    # Tạo token JWT
     expire = datetime.utcnow() + timedelta(minutes=settings.access_token_expire_minutes)
     token_data = {"sub": str(user.id), "exp": expire}
     token = jwt.encode(token_data, settings.secret_key, algorithm=settings.algorithm)
     
-    return TokenResponse(access_token=token)
+    # Lấy Roles của người dùng
+    user_roles = db.query(UserRole).filter(UserRole.user_id == user.id).all()
+    role_ids = [ur.role_id for ur in user_roles]
+    roles = db.query(Role).filter(Role.id.in_(role_ids)).all()
+    role_names = [role.name for role in roles]
+
+    return TokenResponse(access_token=token, roles=role_names)
 
 @router.post("/auth/logout", response_model=LogoutResponse)
 def logout(current_user: User = Depends(get_current_user)):
-    """User logout endpoint (client should remove token)."""
+    """Endpoint đăng xuất (client cần tự xóa token)."""
     return LogoutResponse(message="Logged out successfully")
 
 @router.get("/auth/me", response_model=UserProfileResponse)
 def get_current_user_profile(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    """Get current user profile with roles."""
-    # Get user roles
+    """Lấy hồ sơ người dùng hiện tại cùng các quyền."""
+    # Lấy quyền người dùng
     user_roles = db.query(UserRole).filter(UserRole.user_id == current_user.id).all()
     role_ids = [ur.role_id for ur in user_roles]
     roles = db.query(Role).filter(Role.id.in_(role_ids)).all()
@@ -66,5 +74,5 @@ def get_current_user_profile(current_user: User = Depends(get_current_user), db:
 
 @router.get("/auth/verify")
 def verify_token(current_user: User = Depends(get_current_user)):
-    """Verify if token is valid."""
+    """Kiểm tra xem token có hợp lệ không."""
     return {"valid": True, "user_id": current_user.id}

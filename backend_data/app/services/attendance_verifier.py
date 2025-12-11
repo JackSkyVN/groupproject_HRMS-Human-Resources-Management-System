@@ -7,7 +7,6 @@ class AttendanceVerifier:
         if log.check_in_time is None:
             return False, "missing_check_in"
         if log.check_out_time and log.check_out_time < log.check_in_time:
-            # Simple check for same-day shifts. If overnight, this logic needs to be more complex.
             return False, "checkout_before_checkin"
         return True, None
 
@@ -25,9 +24,7 @@ def verify_log(db: Session, log: Attendance, ai_match: bool | None) -> Attendanc
     if not ok:
         log.verified = False
         log.verification_reason = reason
-        # Send email alert via Celery
         from app.tasks.email import send_email
-        # Assuming we have a way to get recipient email, for now hardcoded or from settings
         send_email.delay(
             to_addr="admin@example.com",
             subject="Attendance Verification Failed",

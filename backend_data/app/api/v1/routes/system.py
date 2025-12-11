@@ -10,9 +10,9 @@ router = APIRouter()
 
 @router.post("/system/reset", dependencies=[Depends(require_permission("system.reset"))])
 def system_reset(db: Session = Depends(get_db)):
-    # delete attendance logs
+    # Xóa nhật ký điểm danh
     deleted = db.query(Attendance).delete(synchronize_session=False)
     db.commit()
-    # enqueue a fresh backup
+    # Xếp hàng tác vụ sao lưu mới
     nightly_backup.delay()
     return {"deleted_rows": int(deleted), "backup_enqueued": True}

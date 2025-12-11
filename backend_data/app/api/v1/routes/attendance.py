@@ -12,6 +12,7 @@ from app.auth.deps import require_permission
 from app.core.database import get_db
 from app.core.cache import cache_get, cache_set, get_cache_key
 from app.models.attendance import Attendance
+from app.models.rbac import User
 
 router = APIRouter()
 
@@ -25,34 +26,61 @@ class AttendanceUpdate(BaseModel):
     note: str | None = None
 
 
-@router.get("/attendance", dependencies=[Depends(require_permission("attendance.view"))])
+@router.get("/attendance", dependencies=[])
 def list_attendance(
     db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("attendance.view")),
     employee_id: int | None = Query(default=None),
     date_from: date | None = Query(default=None),
     date_to: date | None = Query(default=None),
     skip: int = 0,
     limit: int = 50,
 ):
-    # Generate cache key from query parameters
-    cache_params = f"{employee_id}_{date_from}_{date_to}_{skip}_{limit}"
+    # Check xem user có phải admin không
+    is_admin = False
+
+    from app.models.rbac import Role, UserRole, User
+    from app.models.org import Employee
+    
+    admin_role = db.query(Role).filter(Role.name == "admin").first()
+    if admin_role:
+        user_has_admin = db.query(UserRole).filter(
+            UserRole.user_id == current_user.id, 
+            UserRole.role_id == admin_role.id
+        ).first()
+        if user_has_admin:
+            is_admin = True
+
+    # Lấy thông tin nhân viên hiện tại trong database
+    current_emp = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    if not current_emp and not is_admin:
+        return {"items": [], "count": 0}
+
+    # Chạy quyền riêng tư
+    target_emp_id = employee_id
+    if not is_admin:
+        target_emp_id = current_emp.id
+
+    
+    # Tạo key cache
+    cache_params = f"{current_user.id}_{target_emp_id}_{date_from}_{date_to}_{skip}_{limit}"
     cache_key = get_cache_key("attendance", hashlib.md5(cache_params.encode()).hexdigest())
     
-    # Try to get from cache (5 minute TTL)
+    
     cached_result = cache_get(cache_key)
     if cached_result:
         return cached_result
     
-    # Build optimized query with proper indexing
+    # Build query
     stmt = select(Attendance)
-    if employee_id is not None:
-        stmt = stmt.where(Attendance.employee_id == employee_id)
+    if target_emp_id is not None:
+        stmt = stmt.where(Attendance.employee_id == target_emp_id)
     if date_from is not None:
         stmt = stmt.where(Attendance.date >= date_from)
     if date_to is not None:
         stmt = stmt.where(Attendance.date <= date_to)
     
-    # Order by date descending, then time descending
+    
     stmt = stmt.order_by(Attendance.date.desc(), Attendance.check_in_time.desc())
     stmt = stmt.offset(skip).limit(limit)
     
@@ -74,7 +102,7 @@ def list_attendance(
     ]
     result = {"items": items, "count": len(items)}
     
-    # Cache result for 5 minutes
+    
     cache_set(cache_key, result, expire=300)
     
     return result
@@ -135,7 +163,6 @@ def export_attendance(
     ]
     df = pd.DataFrame(data)
 
-    # Compute backend_data root
     backend_root = os.path.abspath(
         os.path.join(os.path.dirname(__file__), "..", "..", "..", "..")
     )
@@ -155,14 +182,12 @@ class CheckInRequest(BaseModel):
 @router.post("/check-in", dependencies=[Depends(require_permission("attendance.edit"))])
 def check_in(payload: CheckInRequest, db: Session = Depends(get_db)):
     """
-    Endpoint for AI module to report attendance.
+    Endpoint cho module AI báo cáo điểm danh.
     """
-    # Check for duplicate check-in within short window (e.g. 1 minute) to prevent spam
     spam_key = f"checkin_spam:{payload.employee_id}"
     if cache_get(spam_key):
         return {"ok": False, "detail": "Duplicate check-in ignored"}
     
-    # Convert timestamp to date and time
     check_in_date = payload.timestamp.date()
     check_in_time = payload.timestamp.time()
     
@@ -170,7 +195,7 @@ def check_in(payload: CheckInRequest, db: Session = Depends(get_db)):
         employee_id=payload.employee_id,
         date=check_in_date,
         check_in_time=check_in_time,
-        status="Present", # Default status
+        status="Present", 
         snapshot_path=payload.snapshot_path,
         verified=True if (payload.confidence and payload.confidence > 0.8) else False,
         verification_reason=f"AI Confidence: {payload.confidence}" if payload.confidence else "Manual/AI"
@@ -179,7 +204,6 @@ def check_in(payload: CheckInRequest, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(new_log)
     
-    # Set spam block for 60 seconds
     cache_set(spam_key, "1", expire=60)
     
     return {"ok": True, "id": new_log.id}

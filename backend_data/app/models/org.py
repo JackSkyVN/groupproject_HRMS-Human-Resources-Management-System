@@ -8,7 +8,7 @@ class Department(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, unique=True, index=True)
-    # Added fields from schema
+    # Các trường được thêm từ schema
     manager_id = Column(Integer, nullable=True)
     location = Column(String(255), nullable=True)
     
@@ -24,8 +24,8 @@ class Position(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(255), nullable=False, unique=True, index=True)
-    # Added fields from schema
-    base_salary_range = Column(String(255), nullable=True) # Storing as string for range e.g. "1000-2000" or Decimal if single value needed
+    # Các trường được thêm từ schema
+    base_salary_range = Column(String(255), nullable=True) # Lưu dưới dạng chuỗi cho khoảng (ví dụ "1000-2000")
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
@@ -37,8 +37,8 @@ class Employee(Base):
     # user_id is already indexed. ondelete=CASCADE is good.
     user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, unique=True, index=True)
     
-    full_name = Column(String(255), nullable=False, index=True) # Added index for search
-    email = Column(String(100), nullable=True, unique=True, index=True) # Added email, unique and indexed
+    full_name = Column(String(255), nullable=False, index=True) # Đã thêm index để tìm kiếm
+    email = Column(String(100), nullable=True, unique=True, index=True) # Đã thêm email, duy nhất và có index
     
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
     position_id = Column(Integer, ForeignKey("positions.id"), nullable=True, index=True)
@@ -46,9 +46,9 @@ class Employee(Base):
     date_of_birth = Column(Date, nullable=True)
     phone = Column(String(255), nullable=True)
     
-    # Added fields from schema
+    # Các trường được thêm từ schema
     hire_date = Column(Date, nullable=True)
-    status = Column(String(50), nullable=True, index=True) # Indexed for filtering active/inactive
+    status = Column(String(50), nullable=True, index=True) # Đã thêm Index để lọc active/inactive
     
     important_employee = Column(Boolean, nullable=False, server_default="false", index=True)
 

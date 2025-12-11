@@ -3,3 +3,5 @@ from app.models.attendance import Attendance
 from app.models.rbac import User, Role, Permission
 from app.models.contracts import Contract
 from app.models.leaves import LeaveBalance, LeaveRequest
+from app.models.payroll import PayrollRecord
+from app.models.announcement import Announcement

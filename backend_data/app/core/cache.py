@@ -4,7 +4,8 @@ from typing import Any, Optional
 import redis
 from app.core.config import settings
 
-# Redis client with connection pooling
+# Client Redis với cơ chế pooling kết nối
+
 redis_client = redis.from_url(
     settings.redis_url,
     decode_responses=True,
