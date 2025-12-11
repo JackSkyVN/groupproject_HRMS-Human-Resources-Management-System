@@ -23,8 +23,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     });
 
-    // [MODIFIED BY BACKEND TEAM] Integrated with Backend API
-    // Handle Login Form Submission
     const loginFormElement = loginForm.querySelector('form');
     if (loginFormElement) {
         loginFormElement.addEventListener('submit', async (event) => {
@@ -35,11 +33,15 @@ document.addEventListener('DOMContentLoaded', () => {
             const password = inputs[1].value;
             const submitBtn = loginFormElement.querySelector('button');
 
+            console.log("Debug: API_BASE_URL is", API_BASE_URL); 
+            const targetUrl = `${API_BASE_URL}/api/v1/auth/login`;
+            console.log("Debug: Fetching", targetUrl);         
+
             try {
                 submitBtn.disabled = true;
                 submitBtn.textContent = 'Signing in...';
 
-                const response = await fetch('http://localhost:8000/api/v1/auth/login', {
+                const response = await fetch(targetUrl, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
@@ -52,9 +54,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
                 if (response.ok) {
                     const data = await response.json();
-                    // Store token
+                    //  Lưu token JWT được cấp bởi backend để dùng cho các request sau
                     localStorage.setItem('token', data.access_token);
-                    // Redirect to Dashboard
+                    //  Lưu danh sách roles (vd: admin, employee) trả về từ backend
+                    localStorage.setItem('roles', JSON.stringify(data.roles)); // Lưu quyền (Roles)
                     window.location.href = '../Main Menu/HR Dashboard/index.html';
                 } else {
                     const errorData = await response.json();
@@ -62,7 +65,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                alert('Login error: Could not connect to server.');
+                alert(`Login error: Could not connect to server.\nURL: ${targetUrl}\nError: ${error.message}`);
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Sign In';

@@ -1,55 +1,15 @@
-// Data Storage
+// Dữ liệu này sẽ được phản hồi từ API
 const appData = {
-    employees: [
-        { id: 1, name: 'John Doe', position: 'Software Engineer', department: 'Engineering', email: 'john.doe@company.com', phone: '+1234567890', joinDate: '2022-01-15', status: 'Active', salary: 85000 },
-        { id: 2, name: 'Jane Smith', position: 'Product Manager', department: 'Product', email: 'jane.smith@company.com', phone: '+1234567891', joinDate: '2021-06-20', status: 'Active', salary: 95000 },
-        { id: 3, name: 'Mike Johnson', position: 'Designer', department: 'Design', email: 'mike.johnson@company.com', phone: '+1234567892', joinDate: '2023-03-10', status: 'Active', salary: 75000 },
-        { id: 4, name: 'Sarah Williams', position: 'HR Manager', department: 'HR', email: 'sarah.williams@company.com', phone: '+1234567893', joinDate: '2020-11-05', status: 'Active', salary: 80000 },
-        { id: 5, name: 'David Brown', position: 'Marketing Specialist', department: 'Marketing', email: 'david.brown@company.com', phone: '+1234567894', joinDate: '2022-08-22', status: 'On Leave', salary: 70000 }
-    ],
-    leaveRequests: [
-        { id: 1, employeeId: 1, employeeName: 'John Doe', type: 'Vacation', startDate: '2024-12-20', endDate: '2024-12-27', days: 7, reason: 'Family vacation', status: 'Approved' },
-        { id: 2, employeeId: 2, employeeName: 'Jane Smith', type: 'Sick Leave', startDate: '2024-11-15', endDate: '2024-11-16', days: 2, reason: 'Medical checkup', status: 'Approved' },
-        { id: 3, employeeId: 3, employeeName: 'Mike Johnson', type: 'Personal', startDate: '2024-11-25', endDate: '2024-11-25', days: 1, reason: 'Personal matters', status: 'Pending' },
-        { id: 4, employeeId: 5, employeeName: 'David Brown', type: 'Vacation', startDate: '2024-11-18', endDate: '2024-11-22', days: 5, reason: 'Traveling', status: 'Pending' }
-    ],
-    attendance: [
-        { id: 1, employeeId: 1, employeeName: 'John Doe', date: '2024-11-18', checkIn: '09:00', checkOut: '18:00', status: 'Present', hours: '9h' },
-        { id: 2, employeeId: 2, employeeName: 'Jane Smith', date: '2024-11-18', checkIn: '08:45', checkOut: '17:30', status: 'Present', hours: '8.75h' },
-        { id: 3, employeeId: 3, employeeName: 'Mike Johnson', date: '2024-11-18', checkIn: '09:15', checkOut: '18:15', status: 'Late', hours: '9h' },
-        { id: 4, employeeId: 4, employeeName: 'Sarah Williams', date: '2024-11-18', checkIn: '-', checkOut: '-', status: 'Absent', hours: '0h' },
-        { id: 5, employeeId: 5, employeeName: 'David Brown', date: '2024-11-18', checkIn: '-', checkOut: '-', status: 'On Leave', hours: '0h' }
-    ],
-    performance: [
-        { id: 1, employeeId: 1, employeeName: 'John Doe', period: 'Q4 2024', rating: 4.5, goals: 'Complete 3 major projects', achievements: 'Delivered 4 projects ahead of schedule', feedback: 'Excellent performance' },
-        { id: 2, employeeId: 2, employeeName: 'Jane Smith', period: 'Q4 2024', rating: 4.8, goals: 'Launch 2 new features', achievements: 'Successfully launched 3 features with positive user feedback', feedback: 'Outstanding leadership' },
-        { id: 3, employeeId: 3, employeeName: 'Mike Johnson', period: 'Q4 2024', rating: 4.2, goals: 'Redesign main dashboard', achievements: 'Completed redesign with improved UX metrics', feedback: 'Great creativity and attention to detail' },
-        { id: 4, employeeId: 4, employeeName: 'Sarah Williams', period: 'Q4 2024', rating: 4.6, goals: 'Improve employee satisfaction', achievements: 'Implemented new benefits program, 15% satisfaction increase', feedback: 'Excellent strategic thinking' }
-    ],
-    salaries: []
+    employees: [],
+    leaveRequests: [],
+    attendance: [],
+    performance: [],
+    salaries: [],
+    announcements: []
 };
 
-// Initialize salaries
-appData.employees.forEach(emp => {
-    const baseSalary = emp.salary;
-    const bonus = Math.floor(baseSalary * 0.1);
-    const benefits = Math.floor(baseSalary * 0.15);
-    const tax = Math.floor((baseSalary + bonus) * 0.2);
-    const netSalary = baseSalary + bonus + benefits - tax;
-    
-    appData.salaries.push({
-        id: emp.id,
-        employeeId: emp.id,
-        employeeName: emp.name,
-        baseSalary: baseSalary,
-        bonus: bonus,
-        benefits: benefits,
-        tax: tax,
-        netSalary: netSalary,
-        month: 'November 2024',
-        status: 'Processed'
-    });
-});
+
+
 
 let currentPage = 'dashboard';
 let nextId = {
@@ -59,20 +19,169 @@ let nextId = {
     performance: 5
 };
 
-// Initialize App
-document.addEventListener('DOMContentLoaded', () => {
+// Pagination State
+let currentEmployeePage = 1;
+const itemsPerPage = 20;
+
+document.addEventListener('DOMContentLoaded', async () => {
     setupNavigation();
+
+    // Lấy data từ backend
+    await fetchDashboardData();
+
     renderPage('dashboard');
 });
 
-// Navigation
+
+async function fetchDashboardData() {
+    const token = localStorage.getItem('token');
+
+    if (!token) {
+        window.location.href = '../../Login screen/index.html';
+        return;
+    }
+
+    const headers = {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json'
+    };
+
+    try {
+        console.log("Fetching Employees...");
+        // Lấy danh sách Nhân viên
+        const empResponse = await fetch(`${API_BASE_URL}/api/v1/employees`, { headers });
+        if (empResponse.status === 401) {
+            alert("Session Expired");
+            window.location.href = '../../Login screen/index.html';
+            return;
+        }
+        if (empResponse.ok) {
+            const employees = await empResponse.json();
+            // Map API response to Frontend format
+            appData.employees = employees.map(e => ({
+                id: e.id,
+                name: e.full_name || e.email,
+                position: e.position_name || 'N/A',
+                department: e.department_name || 'N/A',
+                email: e.email,
+                phone: e.phone || 'N/A',
+                joinDate: '2024-01-01',
+                status: 'Active',
+                salary: 50000
+            }));
+
+            appData.employees.sort((a, b) => {
+                const deptCompare = a.department.localeCompare(b.department);
+                if (deptCompare !== 0) return deptCompare;
+                return a.position.localeCompare(b.position);
+            });
+
+            appData.salaries = [];
+            appData.employees.forEach(emp => {
+                const baseSalary = emp.salary;
+                const bonus = Math.floor(baseSalary * 0.1);
+                const benefits = Math.floor(baseSalary * 0.15);
+                const tax = Math.floor((baseSalary + bonus) * 0.2);
+                appData.salaries.push({
+                    id: emp.id,
+                    employeeId: emp.id,
+                    employeeName: emp.name,
+                    baseSalary: baseSalary,
+                    bonus: bonus,
+                    benefits: benefits,
+                    tax: tax,
+                    netSalary: baseSalary + bonus + benefits - tax,
+                    month: 'Current',
+                    status: 'Processed'
+                });
+            });
+        }
+
+        console.log("Fetching Attendance...");
+        // Lấy dữ liệu Điểm danh
+        const attResponse = await fetch(`${API_BASE_URL}/api/v1/attendance`, { headers });
+        if (attResponse.ok) {
+            const attendance = await attResponse.json();
+            // API response mapping
+            appData.attendance = attendance.map(a => ({
+                id: a.id,
+                employeeId: a.employee_id,
+                employeeName: a.employee_name || 'Unknown',
+                date: a.date,
+                checkIn: a.check_in,
+                checkOut: a.check_out || '-',
+                hours: '-',
+                status: a.status
+            }));
+        }
+
+    } catch (error) {
+        console.error("Error fetching dashboard data:", error);
+        alert("Failed to load data from server. " + error.message);
+    }
+
+    try {
+        console.log("Fetching Additional Data...");
+
+        // Lấy dữ liệu leaves
+        const leaveRes = await fetch(`${API_BASE_URL}/api/v1/leaves`, { headers });
+        if (leaveRes.ok) {
+            const leaves = await leaveRes.json();
+            appData.leaveRequests = leaves.map(l => ({
+                id: l.id,
+                employeeId: l.employee_id,
+                employeeName: l.employee_name,
+                type: l.leave_type,
+                startDate: l.start_date,
+                endDate: l.end_date,
+                days: l.days,
+                reason: l.reason,
+                status: l.approval_status
+            }));
+        }
+
+        //  Lấy dữ liệu payroll
+        const payRes = await fetch(`${API_BASE_URL}/api/v1/payroll`, { headers });
+        if (payRes.ok) {
+            const payrolls = await payRes.json();
+            appData.salaries = payrolls.map(p => ({
+                id: p.id,
+                employeeId: p.employee_id,
+                employeeName: p.employee_name,
+                baseSalary: p.base_salary,
+                bonus: p.bonus,
+                benefits: p.benefits,
+                tax: p.tax,
+                netSalary: p.net_salary,
+                month: p.month,
+                status: p.status
+            }));
+        }
+
+        // Lấy dữ liệu announcements
+        const annRes = await fetch(`${API_BASE_URL}/api/v1/announcements`, { headers });
+        if (annRes.ok) {
+            appData.announcements = await annRes.json();
+        }
+
+    } catch (error) {
+        console.error("Error fetching additional data:", error);
+    }
+}
+
+
 function setupNavigation() {
     const navItems = document.querySelectorAll('.nav-item');
+    //Check roles
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
     navItems.forEach(item => {
+        const page = item.getAttribute('data-page');
+
         item.addEventListener('click', () => {
             navItems.forEach(nav => nav.classList.remove('active'));
             item.classList.add('active');
-            const page = item.getAttribute('data-page');
             renderPage(page);
         });
     });
@@ -81,8 +190,8 @@ function setupNavigation() {
 function renderPage(page) {
     currentPage = page;
     const contentArea = document.getElementById('content-area');
-    
-    switch(page) {
+
+    switch (page) {
         case 'dashboard':
             contentArea.innerHTML = renderDashboard();
             break;
@@ -105,6 +214,10 @@ function renderPage(page) {
         case 'salary':
             contentArea.innerHTML = renderSalary();
             setupSalaryListeners();
+            break;
+        case 'announcements':
+            contentArea.innerHTML = renderAnnouncements();
+            setupAnnouncementListeners();
             break;
     }
 }
@@ -222,13 +335,7 @@ function renderEmployees() {
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Employee Directory</h2>
-                <button class="btn btn-primary" onclick="openAddEmployeeModal()">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <line x1="12" y1="5" x2="12" y2="19"></line>
-                        <line x1="5" y1="12" x2="19" y2="12"></line>
-                    </svg>
-                    Add Employee
-                </button>
+                ${renderAddEmployeeButton()}
             </div>
             
             <div class="search-bar">
@@ -256,22 +363,80 @@ function renderEmployees() {
                     </tbody>
                 </table>
             </div>
+
+            <div class="pagination-controls" style="display: flex; justify-content: flex-end; align-items: center; gap: 5px; margin-top: 20px;">
+                ${renderPaginationButtons()}
+            </div>
         </div>
     `;
 }
 
+function renderPaginationButtons() {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const searchInput = document.getElementById('employee-search');
+    const searchTerm = searchInput ? searchInput.value : '';
+
+    const filtered = appData.employees.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+
+    if (filtered.length === 0) return '';
+
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    if (totalPages <= 1) return '';
+
+    let buttonsHtml = '';
+
+    for (let i = 1; i <= totalPages; i++) {
+        const activeClass = i === currentEmployeePage ? 'btn-primary' : 'btn-outline';
+        buttonsHtml += `<button class="btn btn-small ${activeClass}" onclick="goToPage(${i})">${i}</button>`;
+    }
+
+    if (currentEmployeePage < totalPages) {
+        buttonsHtml += `<button class="btn btn-small btn-outline" onclick="goToPage(${currentEmployeePage + 1})">»</button>`;
+    }
+
+    return buttonsHtml;
+}
+
+function goToPage(page) {
+    currentEmployeePage = page;
+    const searchInput = document.getElementById('employee-search');
+    const searchTerm = searchInput ? searchInput.value : '';
+    document.getElementById('employees-table-body').innerHTML = renderEmployeesRows(searchTerm);
+    // Re-render buttons
+    const container = document.querySelector('.pagination-controls');
+    if (container) container.innerHTML = renderPaginationButtons();
+}
+
 function renderEmployeesRows(searchTerm = '') {
-    const filtered = appData.employees.filter(emp => 
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
+    const filtered = appData.employees.filter(emp =>
         emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
         emp.department.toLowerCase().includes(searchTerm.toLowerCase())
     );
 
     if (filtered.length === 0) {
+        setTimeout(() => updatePaginationControls(0), 0);
         return '<tr><td colspan="6" style="text-align: center; padding: 40px;">No employees found</td></tr>';
     }
 
-    return filtered.map(emp => `
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+    if (currentEmployeePage > totalPages) currentEmployeePage = totalPages;
+    if (currentEmployeePage < 1) currentEmployeePage = 1;
+
+    const start = (currentEmployeePage - 1) * itemsPerPage;
+    const end = start + itemsPerPage;
+    const paginated = filtered.slice(start, end);
+
+    setTimeout(() => updatePaginationControls(filtered.length), 0);
+
+    return paginated.map(emp => `
         <tr>
             <td>${emp.name}</td>
             <td>${emp.position}</td>
@@ -281,7 +446,7 @@ function renderEmployeesRows(searchTerm = '') {
             <td>
                 <div class="action-buttons">
                     <button class="btn btn-small btn-secondary" onclick="viewEmployee(${emp.id})">View</button>
-                    <button class="btn btn-small btn-danger" onclick="deleteEmployee(${emp.id})">Delete</button>
+                    ${isAdmin ? `<button class="btn btn-small btn-danger" onclick="deleteEmployee(${emp.id})">Delete</button>` : ''}
                 </div>
             </td>
         </tr>
@@ -294,7 +459,47 @@ function setupEmployeesListeners() {
         searchInput.addEventListener('input', (e) => {
             const tbody = document.getElementById('employees-table-body');
             tbody.innerHTML = renderEmployeesRows(e.target.value);
+            tbody.innerHTML = renderEmployeesRows(e.target.value);
         });
+    }
+}
+
+function prevPage() {
+    if (currentEmployeePage > 1) {
+        currentEmployeePage--;
+        const searchInput = document.getElementById('employee-search');
+        const searchTerm = searchInput ? searchInput.value : '';
+        document.getElementById('employees-table-body').innerHTML = renderEmployeesRows(searchTerm);
+    }
+}
+
+function nextPage() {
+    const searchInput = document.getElementById('employee-search');
+    const searchTerm = searchInput ? searchInput.value : '';
+
+    const filtered = appData.employees.filter(emp =>
+        emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.position.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        emp.department.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    const totalPages = Math.ceil(filtered.length / itemsPerPage);
+
+    if (currentEmployeePage < totalPages) {
+        currentEmployeePage++;
+        document.getElementById('employees-table-body').innerHTML = renderEmployeesRows(searchTerm);
+    }
+}
+
+function updatePaginationControls(totalItems) {
+    const totalPages = Math.ceil(totalItems / itemsPerPage) || 1;
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const indicator = document.getElementById('page-indicator');
+
+    if (btnPrev && btnNext && indicator) {
+        btnPrev.disabled = currentEmployeePage === 1;
+        btnNext.disabled = currentEmployeePage === totalPages;
+        indicator.textContent = `Page ${currentEmployeePage} of ${totalPages}`;
     }
 }
 
@@ -377,14 +582,14 @@ function handleAddEmployee(event) {
         status: 'Active'
     };
     appData.employees.push(newEmployee);
-    
+
     // Add salary data
     const baseSalary = newEmployee.salary;
     const bonus = Math.floor(baseSalary * 0.1);
     const benefits = Math.floor(baseSalary * 0.15);
     const tax = Math.floor((baseSalary + bonus) * 0.2);
     const netSalary = baseSalary + bonus + benefits - tax;
-    
+
     appData.salaries.push({
         id: newEmployee.id,
         employeeId: newEmployee.id,
@@ -397,12 +602,15 @@ function handleAddEmployee(event) {
         month: 'November 2024',
         status: 'Pending'
     });
-    
+
     closeModal();
     renderPage('employees');
 }
 
 function viewEmployee(id) {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
     const employee = appData.employees.find(e => e.id === id);
     if (!employee) return;
 
@@ -443,10 +651,12 @@ function viewEmployee(id) {
                             <span class="salary-detail-label">Status:</span>
                             <span class="salary-detail-value"><span class="badge badge-${employee.status === 'Active' ? 'success' : 'warning'}">${employee.status}</span></span>
                         </div>
+                        ${isAdmin && employee.salary ? `
                         <div class="salary-detail-row">
                             <span class="salary-detail-label">Salary:</span>
                             <span class="salary-detail-value">$${employee.salary.toLocaleString()}</span>
                         </div>
+                        ` : ''}
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -465,6 +675,82 @@ function deleteEmployee(id) {
         renderPage('employees');
     }
 }
+
+
+async function openMyProfile() {
+    console.log("Opening My Profile...");
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/employees/me`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            console.error("Profile fetch failed:", response.status);
+            alert('Could not load profile. Please try logging in again.');
+            return;
+        }
+
+        const employee = await response.json();
+        const role = JSON.parse(localStorage.getItem('roles') || '[]').includes('admin') ? 'Admin' : 'Employee';
+
+        const modal = `
+            <div class="modal-overlay" onclick="closeModal(event)">
+                <div class="modal" onclick="event.stopPropagation()">
+                    <div class="modal-header">
+                        <h2 class="modal-title">My Profile</h2>
+                        <button class="modal-close" onclick="closeModal()">&times;</button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="salary-details">
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Full Name:</span>
+                                <span class="salary-detail-value">${employee.full_name || employee.email}</span>
+                            </div>
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Email:</span>
+                                <span class="salary-detail-value">${employee.email}</span>
+                            </div>
+                             <div class="salary-detail-row">
+                                <span class="salary-detail-label">Role:</span>
+                                <span class="salary-detail-value"><span class="badge badge-info">${role}</span></span>
+                            </div>
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Position:</span>
+                                <span class="salary-detail-value">${employee.position_name || 'N/A'}</span>
+                            </div>
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Department:</span>
+                                <span class="salary-detail-value">${employee.department_name || 'N/A'}</span>
+                            </div>
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Phone:</span>
+                                <span class="salary-detail-value">${employee.phone || 'N/A'}</span>
+                            </div>
+                            <div class="salary-detail-row">
+                                <span class="salary-detail-label">Status:</span>
+                                <span class="salary-detail-value"><span class="badge badge-success">Active</span></span>
+                            </div>
+                             <div class="salary-detail-row" style="margin-top:10px; font-style:italic; color:#888;">
+                                <span class="salary-detail-label">ID:</span>
+                                <span class="salary-detail-value">#${employee.id}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button class="btn btn-primary" onclick="closeModal()">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('modal-container').innerHTML = modal;
+
+    } catch (e) {
+        console.error(e);
+        alert('Error loading profile');
+    }
+}
+window.openMyProfile = openMyProfile;
 
 // Leave Management
 function renderLeave() {
@@ -524,6 +810,9 @@ function renderLeave() {
 }
 
 function renderLeaveRows(statusFilter = 'all', typeFilter = 'all') {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
     let filtered = appData.leaveRequests;
 
     if (statusFilter !== 'all') {
@@ -547,7 +836,7 @@ function renderLeaveRows(statusFilter = 'all', typeFilter = 'all') {
             <td><span class="badge badge-${leave.status === 'Approved' ? 'success' : leave.status === 'Pending' ? 'warning' : 'danger'}">${leave.status}</span></td>
             <td>
                 <div class="action-buttons">
-                    ${leave.status === 'Pending' ? `
+                    ${(isAdmin && leave.status === 'Pending') ? `
                         <button class="btn btn-small btn-success" onclick="approveLeave(${leave.id})">Approve</button>
                         <button class="btn btn-small btn-danger" onclick="rejectLeave(${leave.id})">Reject</button>
                     ` : `
@@ -560,7 +849,6 @@ function renderLeaveRows(statusFilter = 'all', typeFilter = 'all') {
 }
 
 function setupLeaveListeners() {
-    // Filters are handled by onchange events in HTML
 }
 
 function filterLeaveRequests() {
@@ -622,30 +910,41 @@ function openAddLeaveModal() {
     document.getElementById('modal-container').innerHTML = modal;
 }
 
-function handleAddLeave(event) {
+async function handleAddLeave(event) {
     event.preventDefault();
     const formData = new FormData(event.target);
     const employeeId = parseInt(formData.get('employeeId'));
-    const employee = appData.employees.find(e => e.id === employeeId);
-    
-    const startDate = new Date(formData.get('startDate'));
-    const endDate = new Date(formData.get('endDate'));
-    const days = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+    const token = localStorage.getItem('token');
 
-    const newLeave = {
-        id: nextId.leaveRequests++,
-        employeeId: employeeId,
-        employeeName: employee.name,
-        type: formData.get('type'),
-        startDate: formData.get('startDate'),
-        endDate: formData.get('endDate'),
-        days: days,
-        reason: formData.get('reason'),
-        status: 'Pending'
-    };
-    appData.leaveRequests.push(newLeave);
-    closeModal();
-    renderPage('leave');
+    //  Gọi API
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/leaves`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                leave_type: formData.get('type'),
+                start_date: formData.get('startDate'),
+                end_date: formData.get('endDate'),
+                reason: formData.get('reason')
+            })
+        });
+
+        if (response.ok) {
+            alert("Leave Request Submitted!");
+            await fetchDashboardData(); // Refresh Data
+            closeModal();
+            renderPage('leave');
+        } else {
+            const err = await response.json();
+            alert("Error: " + err.detail);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Submission failed");
+    }
 }
 
 function approveLeave(id) {
@@ -766,7 +1065,6 @@ function renderAttendance() {
 }
 
 function setupAttendanceListeners() {
-    // No additional listeners needed
 }
 
 function openMarkAttendanceModal() {
@@ -826,11 +1124,10 @@ function handleMarkAttendance(event) {
     const formData = new FormData(event.target);
     const employeeId = parseInt(formData.get('employeeId'));
     const employee = appData.employees.find(e => e.id === employeeId);
-    
+
     const checkIn = formData.get('checkIn');
     const checkOut = formData.get('checkOut');
-    
-    // Calculate hours
+
     const checkInTime = new Date(`2024-01-01 ${checkIn}`);
     const checkOutTime = new Date(`2024-01-01 ${checkOut}`);
     const hours = ((checkOutTime - checkInTime) / (1000 * 60 * 60)).toFixed(2);
@@ -852,6 +1149,9 @@ function handleMarkAttendance(event) {
 
 // Performance
 function renderPerformance() {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
     return `
         <div class="page-header">
             <h1>Performance Reviews</h1>
@@ -861,6 +1161,7 @@ function renderPerformance() {
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Performance Reviews</h2>
+                ${isAdmin ? `
                 <button class="btn btn-primary" onclick="openAddPerformanceModal()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
@@ -868,6 +1169,7 @@ function renderPerformance() {
                     </svg>
                     Add Review
                 </button>
+                ` : ''}
             </div>
 
             <div class="table-container">
@@ -908,7 +1210,6 @@ function renderPerformance() {
 }
 
 function setupPerformanceListeners() {
-    // No additional listeners needed
 }
 
 function openAddPerformanceModal() {
@@ -1031,6 +1332,9 @@ function viewPerformance(id) {
 
 // Salary Management
 function renderSalary() {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
     return `
         <div class="page-header">
             <h1>Salary Management</h1>
@@ -1040,12 +1344,14 @@ function renderSalary() {
         <div class="card">
             <div class="card-header">
                 <h2 class="card-title">Employee Salaries - November 2024</h2>
+                ${isAdmin ? `
                 <button class="btn btn-success" onclick="processAllPayroll()">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="20 6 9 17 4 12"></polyline>
                     </svg>
                     Process All Payroll
                 </button>
+                ` : ''}
             </div>
 
             <div class="table-container">
@@ -1075,7 +1381,7 @@ function renderSalary() {
                                 <td>
                                     <div class="action-buttons">
                                         <button class="btn btn-small btn-secondary" onclick="viewSalaryDetails(${salary.employeeId})">Details</button>
-                                        ${salary.status === 'Pending' ? `
+                                        ${isAdmin && salary.status === 'Pending' ? `
                                             <button class="btn btn-small btn-success" onclick="processSalary(${salary.employeeId})">Process</button>
                                         ` : ''}
                                     </div>
@@ -1090,7 +1396,6 @@ function renderSalary() {
 }
 
 function setupSalaryListeners() {
-    // No additional listeners needed
 }
 
 function viewSalaryDetails(employeeId) {
@@ -1148,12 +1453,40 @@ function viewSalaryDetails(employeeId) {
     document.getElementById('modal-container').innerHTML = modal;
 }
 
-function processSalary(employeeId) {
+async function processSalary(employeeId) {
     const salary = appData.salaries.find(s => s.employeeId === employeeId);
-    if (salary) {
-        salary.status = 'Processed';
-        renderPage('salary');
-        alert(`Salary processed for ${salary.employeeName}`);
+    if (!salary) return;
+
+    const token = localStorage.getItem('token');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/payroll`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                employee_id: employeeId,
+                month: new Date().toISOString().slice(0, 7),
+                base_salary: salary.baseSalary,
+                bonus: salary.bonus,
+                benefits: salary.benefits,
+                deductions: 0
+            })
+        });
+
+        if (response.ok) {
+            alert("Payroll Processed Successfully!");
+            await fetchDashboardData();
+            renderPage('salary'); // Refresh view
+        } else {
+            const err = await response.json();
+            alert("Error processing payroll: " + err.detail);
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Failed to connect to server");
     }
 }
 
@@ -1169,8 +1502,145 @@ function processAllPayroll() {
     alert(`Processed payroll for ${processed} employee(s)`);
 }
 
-// Modal Functions
+// Announcements
+function renderAnnouncements() {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    const isAdmin = roles.includes('admin');
+
+    return `
+        <div class="page-header">
+            <h1>Announcements</h1>
+            <p>Company-wide news and updates</p>
+        </div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2 class="card-title">Latest News</h2>
+                ${isAdmin ? `
+                <button class="btn btn-primary" onclick="openAddAnnouncementModal()">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <line x1="12" y1="5" x2="12" y2="19"></line>
+                        <line x1="5" y1="12" x2="19" y2="12"></line>
+                    </svg>
+                    Post Announcement
+                </button>
+                ` : ''}
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Date</th>
+                            <th>Title</th>
+                            <th>Content</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${appData.announcements.length > 0 ? appData.announcements.map(ann => `
+                            <tr>
+                                <td style="width: 150px;">${new Date(ann.created_at || Date.now()).toLocaleDateString()}</td>
+                                <td style="font-weight: bold;">${ann.title}</td>
+                                <td>${ann.content}</td>
+                            </tr>
+                        `).join('') : '<tr><td colspan="3" style="text-align: center; padding: 20px;">No announcements yet</td></tr>'}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+function setupAnnouncementListeners() {
+}
+
+function openAddAnnouncementModal() {
+    const modal = `
+        <div class="modal-overlay" onclick="closeModal(event)">
+            <div class="modal" onclick="event.stopPropagation()">
+                <div class="modal-header">
+                    <h2 class="modal-title">Post Announcement</h2>
+                    <button class="modal-close" onclick="closeModal()">&times;</button>
+                </div>
+                <div class="modal-body">
+                    <form id="add-announcement-form" onsubmit="handleAddAnnouncement(event)">
+                        <div class="form-group">
+                            <label class="form-label">Title</label>
+                            <input type="text" class="form-input" name="title" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">Content</label>
+                            <textarea class="form-textarea" name="content" rows="5" required></textarea>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                    <button class="btn btn-primary" onclick="document.getElementById('add-announcement-form').requestSubmit()">Post</button>
+                </div>
+            </div>
+        </div>
+    `;
+    document.getElementById('modal-container').innerHTML = modal;
+}
+
+async function handleAddAnnouncement(event) {
+    event.preventDefault();
+    const formData = new FormData(event.target);
+    const token = localStorage.getItem('token');
+
+    try {
+        const response = await fetch(`${API_BASE_URL}/api/v1/announcements`, {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${token}`,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                title: formData.get('title'),
+                content: formData.get('content')
+            })
+        });
+
+        if (response.ok) {
+            alert("Announcement Posted!");
+            await fetchDashboardData();
+            closeModal();
+            renderPage('announcements');
+        } else {
+            alert("Failed to post announcement");
+        }
+    } catch (e) {
+        console.error(e);
+        alert("Error posting announcement");
+    }
+}
+
+// Modal
 function closeModal(event) {
     if (event && event.target !== event.currentTarget) return;
     document.getElementById('modal-container').innerHTML = '';
+}
+// Render nút add employee (Only Admin)
+function renderAddEmployeeButton() {
+    const roles = JSON.parse(localStorage.getItem('roles') || '[]');
+    if (!roles.includes('admin')) return '';
+    return `
+        <button class="btn btn-primary" onclick="openAddEmployeeModal()">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="12" y1="5" x2="12" y2="19"></line>
+                <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+            Add Employee
+        </button>
+    `;
+}
+
+// Logout
+function logout() {
+    if (confirm("Are you sure you want to log out?")) {
+        localStorage.removeItem('token');
+        localStorage.removeItem('roles');
+        window.location.href = '../../Login screen/index.html';
+    }
 }

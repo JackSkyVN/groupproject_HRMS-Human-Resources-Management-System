@@ -630,3 +630,39 @@ tbody tr:hover {
         white-space: nowrap;
     }
 }
+
+/* Nút Đăng xuất */
+.main-content {
+    position: relative;
+    /* Để định vị tuyệt đối cho nút logout */
+}
+
+#logout-container {
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    z-index: 100;
+}
+
+#logout-btn {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background-color: #334155;
+    /* Màu đá phiến đậm */
+    color: white;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all 0.2s;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+#logout-btn:hover {
+    background-color: #ef4444;
+    /* Màu đỏ khi di chuột vào */
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.15);
+}
