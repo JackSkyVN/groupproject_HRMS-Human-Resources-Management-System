@@ -1,41 +1,57 @@
+// import { API_BASE_URL } from '../config.js';
+const API_BASE_URL = 'http://127.0.0.1:8000';
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Forgot Password Listener
+    const forgotPwLink = document.getElementById('forgot-password-link');
+    if (forgotPwLink) {
+        forgotPwLink.addEventListener('click', showForgotPasswordInfo);
+    }
+
 
     const loginForm = document.getElementById('login-form');
-    const signupForm = document.getElementById('signup-form');
+    const passwordInput = document.getElementById('password-input');
+    const togglePassword = document.getElementById('togglePassword');
 
-    const showLoginLinks = document.querySelectorAll('.show-login');
-    const showSignupLinks = document.querySelectorAll('.show-signup');
+    // Toggle Password Visibility
+    if (togglePassword && passwordInput) {
+        togglePassword.addEventListener('click', function (e) {
+            e.preventDefault();
+            const type = passwordInput.type === 'password' ? 'text' : 'password';
+            passwordInput.type = type;
 
-    showSignupLinks.forEach(link => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            loginForm.classList.add('hidden');
-            signupForm.classList.remove('hidden');
+            // Toggle icon
+            this.classList.toggle('fa-eye');
+            this.classList.toggle('fa-eye-slash');
         });
-    });
-
-    showLoginLinks.forEach(link => {
-        link.addEventListener('click', (event) => {
-            event.preventDefault();
-            signupForm.classList.add('hidden');
-            loginForm.classList.remove('hidden');
-        });
-    });
+    }
 
     const loginFormElement = loginForm.querySelector('form');
+    const rememberCheckbox = document.getElementById('remember-login');
+    const usernameField = loginFormElement.querySelector('input[type="text"]');
+
+    // Auto-fill remembered username
+    const savedUsername = localStorage.getItem('rememberedUsername');
+    if (savedUsername && usernameField) {
+        usernameField.value = savedUsername;
+        if (rememberCheckbox) rememberCheckbox.checked = true;
+    }
+
     if (loginFormElement) {
         loginFormElement.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            const inputs = loginFormElement.querySelectorAll('input');
-            const username = inputs[0].value;
-            const password = inputs[1].value;
+            // Updated selection to target correct inputs after UI changes
+            const usernameInput = usernameField;
+            const passwordInput = loginFormElement.querySelector('input[type="password"]') || document.getElementById('password-input');
+
+            const username = usernameInput.value;
+            const password = passwordInput.value;
             const submitBtn = loginFormElement.querySelector('button');
 
-            console.log("Debug: API_BASE_URL is", API_BASE_URL); 
+            console.log("Debug: API_BASE_URL is", API_BASE_URL);
             const targetUrl = `${API_BASE_URL}/api/v1/auth/login`;
-            console.log("Debug: Fetching", targetUrl);         
+            console.log("Debug: Fetching", targetUrl);
 
             try {
                 submitBtn.disabled = true;
@@ -47,25 +63,42 @@ document.addEventListener('DOMContentLoaded', () => {
                         'Content-Type': 'application/json',
                     },
                     body: JSON.stringify({
-                        'email': username,
+                        'username': username,
                         'password': password
                     })
                 });
 
                 if (response.ok) {
+                    // Handle Remember Me
+                    if (rememberCheckbox && rememberCheckbox.checked) {
+                        localStorage.setItem('rememberedUsername', username);
+                    } else {
+                        localStorage.removeItem('rememberedUsername');
+                    }
+
                     const data = await response.json();
-                    //  Lưu token JWT được cấp bởi backend để dùng cho các request sau
                     localStorage.setItem('token', data.access_token);
-                    //  Lưu danh sách roles (vd: admin, employee) trả về từ backend
-                    localStorage.setItem('roles', JSON.stringify(data.roles)); // Lưu quyền (Roles)
-                    window.location.href = '../Main Menu/HR Dashboard/index.html';
+                    localStorage.setItem('roles', JSON.stringify(data.roles));
+
+                    showToast('Logged in successfully!', 'success');
+
+                    // Small delay to let the toast be seen
+                    setTimeout(() => {
+                        window.location.replace('../Main%20Menu/HR%20Dashboard/index.html');
+                    }, 1200);
                 } else {
                     const errorData = await response.json();
-                    alert('Login failed: ' + (errorData.detail || 'Unknown error'));
+                    let errMsg = 'Login failed';
+                    if (typeof errorData.detail === 'string') {
+                        errMsg = errorData.detail;
+                    } else if (Array.isArray(errorData.detail)) {
+                        errMsg = errorData.detail[0].msg || 'Validation error';
+                    }
+                    showToast(errMsg, 'danger');
                 }
             } catch (error) {
                 console.error('Login error:', error);
-                alert(`Login error: Could not connect to server.\nURL: ${targetUrl}\nError: ${error.message}`);
+                showToast(`Could not connect to server.`, 'danger');
             } finally {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Sign In';
@@ -73,3 +106,41 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 });
+
+function showForgotPasswordInfo() {
+    showToast("Please contact the HR Manager or System Administrator to reset your password.", "warning");
+}
+
+function showToast(message, type = 'success') {
+    let container = document.getElementById('toast-container');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'toast-container';
+        document.body.appendChild(container);
+    }
+
+    const icons = {
+        success: 'fas fa-check-circle',
+        error: 'fas fa-shield-exclamation',
+        danger: 'fas fa-exclamation-triangle',
+        warning: 'fas fa-info-circle'
+    };
+
+    const iconClass = icons[type] || icons.success;
+
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.innerHTML = `
+        <div class="toast-icon">
+            <i class="${iconClass}"></i>
+        </div>
+        <div class="toast-content">${message}</div>
+    `;
+
+    container.appendChild(toast);
+
+    setTimeout(() => {
+        toast.classList.add('fade-out');
+        setTimeout(() => toast.remove(), 400);
+    }, 4000);
+}

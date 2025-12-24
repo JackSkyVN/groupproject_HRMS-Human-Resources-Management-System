@@ -1,0 +1,21 @@
+"""
+Simple login credentials for testing
+"""
+
+print("=" * 50)
+print("TEST LOGIN CREDENTIALS")
+print("=" * 50)
+print()
+print("Username: to1979714")
+print("Password: (check database)")
+print()
+print("OR try these from imported employees:")
+print()
+print("1. ha1972816 - HR Director")
+print("2. tang1985928 - HR Staff")  
+print("3. to1979714 - Admin")
+print()
+print("Default password format: [Username]@FINOVA")
+print("Example: Ha1972816@FINOVA")
+print()
+print("=" * 50)

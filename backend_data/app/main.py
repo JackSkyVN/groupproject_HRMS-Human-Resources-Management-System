@@ -7,9 +7,10 @@ from app.core.config import settings
 from app.api.v1.routes.health import router as health_router
 from app.api.v1.routes.attendance import router as attendance_router
 from app.api.v1.routes.auth import router as auth_router
-from app.api.v1.routes.system import router as system_router
 from app.api.v1.routes.employee import router as employee_router
-
+from app.api.v1.routes.leaves import router as leaves_router
+from app.api.v1.routes.payroll import router as payroll_router
+from app.api.v1.routes.announcement import router as announcement_router
 
 from app.core.database import Base, engine
 import app.models  
@@ -18,12 +19,15 @@ import app.models
 async def lifespan(app: FastAPI):
     """Các sự kiện vòng đời ứng dụng."""
     # Start
+    print("\n\n" + "="*50)
+    print(">>> HRMS SERVER STARTED - NEW SCHEMA ACTIVE <<<")
+    print("="*50 + "\n\n")
     print("HRMS Startup: Creating database tables...")
     Base.metadata.create_all(bind=engine)
     print("HRMS Tables Created.")
+    
     yield
-    # Turndown
-    print("HRMS")
+    print("HRMS Shutdown.")
 
 
 app = FastAPI(
@@ -42,6 +46,8 @@ app.add_middleware(
         "http://localhost:3000",
         "http://127.0.0.1:3000",
         "http://localhost:5173",
+        "http://localhost:5500",
+        "http://127.0.0.1:5500",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -59,19 +65,10 @@ async def add_process_time_header(request: Request, call_next):
     return response
 
 # Router
-from app.api.v1.routes.attendance import router as attendance_router
-from app.api.v1.routes.auth import router as auth_router
-from app.api.v1.routes.system import router as system_router
-from app.api.v1.routes.employee import router as employee_router
-from app.api.v1.routes.leaves import router as leaves_router
-from app.api.v1.routes.payroll import router as payroll_router
-from app.api.v1.routes.announcement import router as announcement_router
-
 app.include_router(health_router, prefix=settings.api_prefix)
-app.include_router(attendance_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
-app.include_router(system_router, prefix=settings.api_prefix)
+app.include_router(attendance_router, prefix=f"{settings.api_prefix}/attendance", tags=["attendance"])
 app.include_router(employee_router, prefix=settings.api_prefix, tags=["employees"])
-app.include_router(leaves_router, prefix=settings.api_prefix, tags=["leaves"])
-app.include_router(payroll_router, prefix=settings.api_prefix, tags=["payroll"])
+app.include_router(leaves_router, prefix=f"{settings.api_prefix}/leaves", tags=["leaves"])
+app.include_router(payroll_router, prefix=f"{settings.api_prefix}/payroll", tags=["payroll"])
 app.include_router(announcement_router, prefix=settings.api_prefix, tags=["announcements"])

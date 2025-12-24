@@ -1,16 +1,30 @@
+
 # Python venv and caches
 .venv/
 __pycache__/
 *.pyc
+*.pyo
+*.pyd
 
 # Local environment
 .env
 
+# Large Binary Files (Exceed GitHub 100MB Limit)
+*.dll
+*.so
+*.dylib
+*.onnx
+*.pt
+*.pth
+*.bin
+*.exe
+
 # Editor/OS
 .DS_Store
 Thumbs.db
+.vscode/
 
-# Celery runtime DB files (do not commit)
+# Celery runtime DB files
 celerybeat-schedule
 celerybeat-schedule-shm
 celerybeat-schedule-wal

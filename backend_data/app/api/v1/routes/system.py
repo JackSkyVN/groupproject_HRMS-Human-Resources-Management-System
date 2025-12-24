@@ -13,6 +13,5 @@ def system_reset(db: Session = Depends(get_db)):
     # Xóa nhật ký điểm danh
     deleted = db.query(Attendance).delete(synchronize_session=False)
     db.commit()
-    # Xếp hàng tác vụ sao lưu mới
     nightly_backup.delay()
     return {"deleted_rows": int(deleted), "backup_enqueued": True}

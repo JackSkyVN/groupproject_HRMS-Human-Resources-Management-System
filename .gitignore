@@ -1,0 +1,43 @@
+
+# Python venv and caches
+.venv/
+**/.venv/
+__pycache__/
+**/__pycache__/
+*.pyc
+*.pyd
+
+# Node modules
+node_modules/
+**/node_modules/
+
+# Large Files
+*.dll
+*.onnx
+*.pt
+*.bin
+*.exe
+*.zip
+*.tar.gz
+*.rar
+
+# Environment
+.env
+**/.env
+
+# Backups and Data
+backups/
+**/backups/
+data/
+**/data/
+*.sql
+*.db
+*.csv
+*.log
+
+# IDE / System
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini

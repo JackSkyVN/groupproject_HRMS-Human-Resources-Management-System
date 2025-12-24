@@ -6,7 +6,8 @@ class Settings(BaseSettings):
 
     secret_key: str = "change_me"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 30
+    access_token_expire_minutes: int = 480 # Extended to 8 hours for better testing experience
+    skip_strict_reset_on_reload: bool = True # Set to True to prevent data loss on every code save
 
     postgres_host: str = "localhost"
     postgres_port: int = 5432

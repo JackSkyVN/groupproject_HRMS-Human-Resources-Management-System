@@ -1,228 +1,280 @@
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from sqlalchemy import select, func
+from sqlalchemy import select, func, and_, or_
 from pydantic import BaseModel, EmailStr, Field
 from typing import Optional
-from datetime import date
+from datetime import date, datetime
 
 from app.core.database import get_db
-from app.models.rbac import User
-from app.models.org import Employee, Department, Position
-from app.auth.deps import require_permission
-from app.core.cache import cache_get, cache_set, get_cache_key, cache_delete_pattern
+from app.models.employees import Employee
+from app.models.roles import Role
+from app.models.departments import Department
+from app.models.positions import Position
+from app.auth.deps import get_current_employee, require_role_level
 
 router = APIRouter()
 
-
-#                                            Model Pydantic
+# ==================== SCHEMAS ====================
 
 class EmployeeBase(BaseModel):
-    email: str
-    full_name: Optional[str] = None
+    employee_code: str
+    full_name: str
+    email: EmailStr
+    username: str
+    phone: Optional[str] = None
+    date_of_birth: Optional[date] = None
+    hire_date: date
     department_id: Optional[int] = None
     position_id: Optional[int] = None
-    date_of_birth: Optional[date] = None
-    phone: Optional[str] = None
-    important_employee: bool = False
+    role_id: int
+    manager_id: Optional[int] = None
 
 class EmployeeCreate(EmployeeBase):
     password: str = Field(min_length=6)
 
 class EmployeeUpdate(BaseModel):
-    email: Optional[str] = None
-    password: Optional[str] = None
+    full_name: Optional[str] = None
+    email: Optional[EmailStr] = None
+    phone: Optional[str] = None
+    date_of_birth: Optional[date] = None
     department_id: Optional[int] = None
     position_id: Optional[int] = None
-    date_of_birth: Optional[date] = None
-    phone: Optional[str] = None
-    important_employee: Optional[bool] = None
+    role_id: Optional[int] = None
+    manager_id: Optional[int] = None
+    status: Optional[str] = None
 
 class EmployeeOut(BaseModel):
-    id: int
-    user_id: int
+    employee_id: int
+    employee_code: str
+    full_name: str
     email: str
-    full_name: Optional[str] = None
+    username: str
+    phone: Optional[str] = None
     department_name: Optional[str] = None
     position_name: Optional[str] = None
-    phone: Optional[str] = None
-    important_employee: bool
+    role_name: str
+    role_level: int
+    status: str
+    hire_date: date
     
     class Config:
         from_attributes = True
 
+# ==================== HELPERS ====================
 
-#                                Route 
-
-@router.get("/employees/me", response_model=EmployeeOut)
-def get_my_profile(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("employee.view"))
-):
-    stmt = select(Employee, User, Department, Position).\
-        join(User, Employee.user_id == User.id).\
-        outerjoin(Department, Employee.department_id == Department.id).\
-        outerjoin(Position, Employee.position_id == Position.id).\
-        where(User.id == current_user.id)
+def get_employee_with_details(db: Session, employee_id: int):
+    stmt = select(Employee, Role, Department, Position).\
+        join(Role, Employee.role_id == Role.role_id).\
+        outerjoin(Department, Employee.department_id == Department.department_id).\
+        outerjoin(Position, Employee.position_id == Position.position_id).\
+        where(Employee.employee_id == employee_id)
     
     result = db.execute(stmt).first()
     if not result:
-        raise HTTPException(status_code=404, detail="Employee profile not found")
+        return None
         
-    emp, user, dept, pos = result
-    
+    emp, role, dept, pos = result
     return {
-        "id": emp.id,
-        "user_id": user.id,
-        "email": user.email,
-        "full_name": emp.full_name,
-        "department_name": dept.name if dept else None,
-        "position_name": pos.name if pos else None,
-        "phone": emp.phone,
-        "important_employee": emp.important_employee
-    } 
+        **emp.__dict__,
+        "role_name": role.role_name,
+        "role_level": role.role_level,
+        "department_name": dept.department_name if dept else None,
+        "position_name": pos.position_name if pos else None
+    }
 
-@router.get("/employees", response_model=list[EmployeeOut], dependencies=[])
-def list_employees(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("employee.view")),
-    skip: int = 0,
-    limit: int = 1000,
-    department_id: Optional[int] = None
+# ==================== ROUTES ====================
+
+@router.get("/me", response_model=EmployeeOut)
+async def get_my_profile(
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
 ):
-    # Kiểm tra quyền Admin
-    from app.models.rbac import Role, UserRole
-    is_admin = False
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    if admin_role:
-        if db.query(UserRole).filter(UserRole.user_id == current_user.id, UserRole.role_id == admin_role.id).first():
-            is_admin = True
-            
+    """Lấy thông tin profile cá nhân"""
+    return get_employee_with_details(db, current_employee.employee_id)
+
+@router.get("", response_model=list[EmployeeOut])
+async def list_employees(
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee),
+    skip: int = 0,
+    limit: int = 100
+):
+    """
+    Hiển thị danh sách nhân viên theo quyền:
+    - Admin (L1): Xem tất cả.
+    - HR Chung (L2): Xem tất cả.
+    - HR Phòng ban (L3): Xem nhân viên trong phòng.
+    - Staff (L4): Chỉ xem chính mình.
+    """
+    current_role = db.get(Role, current_employee.role_id)
+    level = current_role.role_level if current_role else 4
+
+    stmt = select(Employee, Role, Department, Position).\
+        join(Role, Employee.role_id == Role.role_id).\
+        outerjoin(Department, Employee.department_id == Department.department_id).\
+        outerjoin(Position, Employee.position_id == Position.position_id)
+
+    if level == 1 or level == 2:
+        # Admin / HR Chung see all
+        pass
+    elif level == 3:
+        # HR Dept see their own dept
+        stmt = stmt.where(Employee.department_id == current_employee.department_id)
+    else:
+        # Staff only see themselves
+        stmt = stmt.where(Employee.employee_id == current_employee.employee_id)
+
+    results = db.execute(stmt.offset(skip).limit(limit)).all()
     
-
-    
-    stmt = select(Employee, User, Department, Position).\
-        join(User, Employee.user_id == User.id).\
-        outerjoin(Department, Employee.department_id == Department.id).\
-        outerjoin(Position, Employee.position_id == Position.id)
-
-    if department_id:
-        stmt = stmt.where(Employee.department_id == department_id)
-
-    stmt = stmt.offset(skip).limit(limit)
-    results = db.execute(stmt).all()
-
-    employees = []
-    for emp, user, dept, pos in results:
-        employees.append({
-            "id": emp.id,
-            "user_id": user.id,
-            "email": user.email,
-            "full_name": emp.full_name,
-            "department_name": dept.name if dept else None,
-            "position_name": pos.name if pos else None,
-            "phone": emp.phone,
-            "important_employee": emp.important_employee
+    output = []
+    for emp, role, dept, pos in results:
+        output.append({
+            **emp.__dict__,
+            "role_name": role.role_name,
+            "role_level": role.role_level,
+            "department_name": dept.department_name if dept else None,
+            "position_name": pos.position_name if pos else None
         })
-    
-    return employees
+    return output
 
-
-@router.post("/employees", response_model=EmployeeOut, dependencies=[Depends(require_permission("employee.create"))])
-def create_employee(payload: EmployeeCreate, db: Session = Depends(get_db)):
-    # 1. Tạo User
+@router.post("", response_model=EmployeeOut)
+async def create_employee(
+    payload: EmployeeCreate,
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
+):
+    """
+    Tạo nhân viên theo phân cấp Tiered CRUD:
+    - Admin (L1): CRUD HR Chung (L2).
+    - HR Chung (L2): CRUD Giám đốc + HR Phòng ban (L3).
+    - HR Phòng ban (L3): CRUD Staff (L4) trong phòng.
+    """
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
-    # Kiểm tra xem người dùng đã tồn tại
-    existing_user = db.execute(select(User).where(User.email == payload.email)).scalar_one_or_none()
-    if existing_user:
-        raise HTTPException(status_code=400, detail="Email already registered")
+    current_role = db.get(Role, current_employee.role_id)
+    current_level = current_role.role_level
+    
+    target_role = db.get(Role, payload.role_id)
+    if not target_role:
+        raise HTTPException(status_code=404, detail="Target role not found")
+    target_level = target_role.role_level
 
-    hashed_pw = pwd_context.hash(payload.password)
-    new_user = User(email=payload.email, hashed_password=hashed_pw)
-    db.add(new_user)
-    db.flush() # Lấy ID
+    # Kiểm tra phân cấp Tiered CRUD
+    allowed = False
+    if current_level == 1: # Admin
+        if target_level == 2: allowed = True # Admin -> HR Chung
+        else: raise HTTPException(status_code=403, detail="Admin can only create HR General accounts")
+        
+    elif current_level == 2: # HR Chung
+        if target_level == 3: allowed = True # HR Chung -> HR Dept
+        # Ngoài ra HR Chung có thể tạo Giám đốc (nhưng Giám đốc thường là level 2 hoặc 3 tùy vị trí)
+        # Theo yêu cầu user: HR Chung CRUD giám đốc + HR phòng ban
+        else: raise HTTPException(status_code=403, detail="HR General can only create HR Department accounts")
+        
+    elif current_level == 3: # HR Dept
+        if target_level == 4: # HR Dept -> Staff
+            if payload.department_id != current_employee.department_id:
+                raise HTTPException(status_code=403, detail="HR Department can only create staff for their own department")
+            allowed = True
+        else: raise HTTPException(status_code=403, detail="HR Department can only create Staff accounts")
+    
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for tiered CRUD")
 
-    # 2. Tạo Employee liên kết với User
+    # Check existence
+    if db.query(Employee).filter(or_(Employee.username == payload.username, Employee.email == payload.email)).first():
+        raise HTTPException(status_code=400, detail="Username or Email already exists")
+
     new_emp = Employee(
-        user_id=new_user.id,
-        department_id=payload.department_id,
-        position_id=payload.position_id,
-        date_of_birth=payload.date_of_birth,
-        phone=payload.phone,
-        important_employee=payload.important_employee
+        **payload.dict(exclude={"password"}),
+        password_hash=pwd_context.hash(payload.password),
+        created_by=current_employee.employee_id
     )
     db.add(new_emp)
     db.commit()
     db.refresh(new_emp)
     
-    # Xóa cache danh sách
-    cache_delete_pattern("hrms:employees:list*")
+    return get_employee_with_details(db, new_emp.employee_id)
 
-    return {
-        "id": new_emp.id,
-        "user_id": new_user.id,
-        "email": new_user.email,
-        "department_name": None, 
-        "position_name": None,
-        "phone": new_emp.phone,
-        "important_employee": new_emp.important_employee
-    }
-
-@router.get("/employees/{employee_id}", response_model=EmployeeOut, dependencies=[])
-def get_employee(
-    employee_id: int, 
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("employee.view"))
+@router.get("/{id}", response_model=EmployeeOut)
+async def get_employee(
+    id: int,
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
 ):
-    # Check admin
-    from app.models.rbac import Role, UserRole
-    is_admin = False
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    if admin_role:
-        if db.query(UserRole).filter(UserRole.user_id == current_user.id, UserRole.role_id == admin_role.id).first():
-            is_admin = True
-
-    stmt = select(Employee, User, Department, Position).\
-        join(User, Employee.user_id == User.id).\
-        outerjoin(Department, Employee.department_id == Department.id).\
-        outerjoin(Position, Employee.position_id == Position.id).\
-        where(Employee.id == employee_id)
-    
-    result = db.execute(stmt).first()
-    if not result:
+    """Lấy chi tiết nhân viên"""
+    emp_details = get_employee_with_details(db, id)
+    if not emp_details:
         raise HTTPException(status_code=404, detail="Employee not found")
-    
-    emp, user, dept, pos = result
-    
-    # Enforce privacy
-    if not is_admin and user.id != current_user.id:
-        raise HTTPException(status_code=403, detail="Access denied")
+        
+    # Permission check for viewing details
+    current_role = db.get(Role, current_employee.role_id)
+    if current_role.role_level > 3 and current_employee.employee_id != id:
+        raise HTTPException(status_code=403, detail="Forbidden")
+        
+    return emp_details
 
-    return {
-        "id": emp.id,
-        "user_id": user.id,
-        "email": user.email,
-        "department_name": dept.name if dept else None,
-        "position_name": pos.name if pos else None,
-        "phone": emp.phone,
-        "important_employee": emp.important_employee
-    }
-
-@router.delete("/employees/{employee_id}", dependencies=[Depends(require_permission("employee.delete"))])
-def delete_employee(employee_id: int, db: Session = Depends(get_db)):
-    emp = db.get(Employee, employee_id)
-    if not emp:
+@router.put("/{id}", response_model=EmployeeOut)
+async def update_employee_route(
+    id: int,
+    payload: EmployeeUpdate,
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
+):
+    """Cập nhật nhân viên (Tuân thủ Tiered CRUD)"""
+    target_emp = db.get(Employee, id)
+    if not target_emp:
         raise HTTPException(status_code=404, detail="Employee not found")
+        
+    current_role = db.get(Role, current_employee.role_id)
+    target_role = db.get(Role, target_emp.role_id)
     
-  
-    
-    user = db.get(User, emp.user_id)
-    if user:
-        db.delete(user) 
+    # Tiered CRUD Logic
+    if current_role.role_level == 1 and target_role.role_level == 2: pass
+    elif current_role.role_level == 2 and target_role.role_level == 3: pass
+    elif current_role.role_level == 3 and target_role.role_level == 4:
+        if target_emp.department_id != current_employee.department_id:
+            raise HTTPException(status_code=403, detail="Department mismatch")
+    elif id == current_employee.employee_id: pass # Can update self
     else:
-        db.delete(emp)
+        raise HTTPException(status_code=403, detail="Tiered CRUD permission denied")
+
+    for key, value in payload.dict(exclude_unset=True).items():
+        setattr(target_emp, key, value)
         
     db.commit()
-    cache_delete_pattern("hrms:employees:list*")
-    return {"ok": True}
+    db.refresh(target_emp)
+    return get_employee_with_details(db, target_emp.employee_id)
+
+@router.delete("/{id}")
+async def delete_employee_route(
+    id: int,
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
+):
+    """Xóa nhân viên (Tuân thủ Tiered CRUD)"""
+    target_emp = db.get(Employee, id)
+    if not target_emp:
+        raise HTTPException(status_code=404, detail="Employee not found")
+        
+    if id == current_employee.employee_id:
+        raise HTTPException(status_code=400, detail="Cannot delete self")
+
+    current_role = db.get(Role, current_employee.role_id)
+    target_role = db.get(Role, target_emp.role_id)
+    
+    # Tiered CRUD Logic
+    allowed = False
+    if current_role.role_level == 1 and target_role.role_level == 2: allowed = True
+    elif current_role.role_level == 2 and target_role.role_level == 3: allowed = True
+    elif current_role.role_level == 3 and target_role.role_level == 4:
+        if target_emp.department_id == current_employee.department_id:
+            allowed = True
+            
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Tiered CRUD permission denied")
+
+    db.delete(target_emp)
+    db.commit()
+    return {"ok": True, "message": "Employee deleted"}

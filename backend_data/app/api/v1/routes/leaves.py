@@ -1,156 +1,202 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import select, desc
+from sqlalchemy import select, desc, or_
 from pydantic import BaseModel
 from typing import Optional
 from datetime import date, datetime
 
 from app.core.database import get_db
-from app.models.org import Employee
-from app.models.rbac import User, Role, UserRole
-from app.models.leaves import LeaveRequest, LeaveBalance
-from app.auth.deps import require_permission, get_current_user
+from app.models.employees import Employee
+from app.models.leave_request import LeaveRequest
+from app.models.leave_type import LeaveType
+from app.models.roles import Role
+from app.models.notification import Notification
+from app.auth.deps import get_current_employee
 
 router = APIRouter()
 
-# --- Pydantic Models ---
+# ==================== SCHEMAS ====================
+
 class LeaveRequestCreate(BaseModel):
-    leave_type: str
+    leave_type_id: int
     start_date: date
     end_date: date
     reason: Optional[str] = None
 
 class LeaveRequestOut(BaseModel):
-    id: int
+    request_id: int
     employee_id: int
-    employee_name: Optional[str] = None # Helper
-    leave_type: str
+    employee_name: str
+    leave_type_name: str
     start_date: date
     end_date: date
-    days: int
+    total_days: float
     reason: Optional[str] = None
-    approval_status: str
+    status: str
     approver_id: Optional[int] = None
+    approver_name: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 class LeaveStatusUpdate(BaseModel):
-    status: str
+    status: str  # approved, rejected
 
-# --- Routes ---
+# ==================== ROUTES ====================
 
-@router.post("/leaves", response_model=LeaveRequestOut)
-def submit_leave_request(
-    payload: LeaveRequestCreate, 
+@router.post("", response_model=LeaveRequestOut)
+async def submit_leave_request(
+    payload: LeaveRequestCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("attendance.view")) # grant minimal permissions
+    current_employee: Employee = Depends(get_current_employee)
 ):
-    # Lấy ID nhân viên từ User
-    employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
-    if not employee:
-        raise HTTPException(status_code=404, detail="Employee profile not found")
-
-    # Xác thực ngày tháng
+    """Gửi đơn xin nghỉ phép"""
     if payload.end_date < payload.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date")
-    
-    # Tính số ngày
+        
     days = (payload.end_date - payload.start_date).days + 1
     
-    # Kiểm tra số dư phép
-    
-    new_leave = LeaveRequest(
-        employee_id=employee.id,
-        leave_type=payload.leave_type,
+    new_request = LeaveRequest(
+        employee_id=current_employee.employee_id,
+        leave_type_id=payload.leave_type_id,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        total_days=days,
         reason=payload.reason,
-        approval_status="Pending"
+        status="pending"
     )
-    db.add(new_leave)
+    db.add(new_request)
     db.commit()
-    db.refresh(new_leave)
+    db.refresh(new_request)
     
-    return {
-        "id": new_leave.id,
-        "employee_id": new_leave.employee_id,
-        "employee_name": employee.full_name,
-        "leave_type": new_leave.leave_type,
-        "start_date": new_leave.start_date,
-        "end_date": new_leave.end_date,
-        "days": days,
-        "reason": new_leave.reason,
-        "approval_status": new_leave.approval_status,
-        "approver_id": new_leave.approver_id,
-        "created_at": new_leave.created_at
-    }
+    return await get_leave_details(new_request.request_id, db)
 
-@router.get("/leaves", response_model=list[LeaveRequestOut])
-def list_leaves(
+@router.get("", response_model=list[LeaveRequestOut])
+async def list_leaves(
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
+    current_employee: Employee = Depends(get_current_employee),
+    employee_id: Optional[int] = Query(None),
+    status: Optional[str] = Query(None),
+    skip: int = 0,
+    limit: int = 100
 ):
-    # Kiểm tra Admin
-    is_admin = False
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    if admin_role and db.query(UserRole).filter(UserRole.user_id == current_user.id, UserRole.role_id == admin_role.id).first():
-        is_admin = True
-        
-    employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    """
+    Xem danh sách nghỉ phép theo quyền:
+    - Admin/HR Chung: Tất cả.
+    - HR Phòng ban: Nhân viên trong phòng + chính mình.
+    - Staff: Chỉ chính mình.
+    """
+    current_role = db.get(Role, current_employee.role_id)
+    level = current_role.role_level if current_role else 4
 
-    stmt = select(LeaveRequest).order_by(desc(LeaveRequest.created_at))
+    stmt = select(LeaveRequest, Employee, LeaveType).\
+        join(Employee, LeaveRequest.employee_id == Employee.employee_id).\
+        join(LeaveType, LeaveRequest.leave_type_id == LeaveType.leave_type_id)
+
+    if level == 1 or level == 2:
+        pass
+    elif level == 3:
+        stmt = stmt.where(or_(
+            Employee.department_id == current_employee.department_id,
+            LeaveRequest.employee_id == current_employee.employee_id
+        ))
+    else:
+        stmt = stmt.where(LeaveRequest.employee_id == current_employee.employee_id)
+
+    if employee_id:
+        stmt = stmt.where(LeaveRequest.employee_id == employee_id)
+    if status:
+        stmt = stmt.where(LeaveRequest.status == status)
+
+    results = db.execute(stmt.order_by(desc(LeaveRequest.created_at)).offset(skip).limit(limit)).all()
     
-    if not is_admin:
-        if not employee:
-            return []
-        stmt = stmt.where(LeaveRequest.employee_id == employee.id)
-        
-    leaves = db.execute(stmt).scalars().all()
-    
-    results = []
-    for leave in leaves:
-        emp_name = "Unknown"
-        if leave.employee: 
-            emp_name = leave.employee.full_name or leave.employee.email
-        
-        days = (leave.end_date - leave.start_date).days + 1
-        
-        results.append({
-            "id": leave.id,
-            "employee_id": leave.employee_id,
-            "employee_name": emp_name,
-            "leave_type": leave.leave_type,
-            "start_date": leave.start_date,
-            "end_date": leave.end_date,
-            "days": days,
-            "reason": leave.reason,
-            "approval_status": leave.approval_status,
-            "approver_id": leave.approver_id,
-            "created_at": leave.created_at
+    output = []
+    for req, emp, ltype in results:
+        approver = db.get(Employee, req.approver_id) if req.approver_id else None
+        output.append({
+            "request_id": req.request_id,
+            "employee_id": emp.employee_id,
+            "employee_name": emp.full_name,
+            "leave_type_name": ltype.type_name,
+            "start_date": req.start_date,
+            "end_date": req.end_date,
+            "total_days": float(req.total_days),
+            "reason": req.reason,
+            "status": req.status,
+            "approver_id": req.approver_id,
+            "approver_name": approver.full_name if approver else None,
+            "created_at": req.created_at
         })
-        
-    return results
+    return output
 
-@router.put("/leaves/{leave_id}/status")
-def update_leave_status(
-    leave_id: int,
+@router.put("/{id}/status")
+async def update_leave_status(
+    id: int,
     payload: LeaveStatusUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("employee.create")) # Quyền Admin/Quản lý
+    current_employee: Employee = Depends(get_current_employee)
 ):
-    # Lấy yêu cầu
-    leave = db.get(LeaveRequest, leave_id)
-    if not leave:
-        raise HTTPException(status_code=404, detail="Leave request not found")
+    """Duyệt/Từ chối đơn nghỉ phép (Tiered Approval)"""
+    req = db.get(LeaveRequest, id)
+    if not req:
+        raise HTTPException(status_code=404, detail="Request not found")
         
-    # Lấy ID nhân viên phê duyệt
-    approver = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    target_emp = db.get(Employee, req.employee_id)
+    target_role = db.get(Role, target_emp.role_id)
+    current_role = db.get(Role, current_employee.role_id)
     
-    leave.approval_status = payload.status
-    if approver:
-        leave.approver_id = approver.id
-        
+    # Tiered Approval Logic
+    allowed = False
+    if current_role.role_level == 1 and target_role.role_level == 2: allowed = True
+    elif current_role.role_level == 2 and target_role.role_level == 3: allowed = True
+    elif current_role.role_level == 3 and target_role.role_level == 4:
+        if target_emp.department_id == current_employee.department_id:
+            allowed = True
+            
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Insufficient permissions for tiered approval")
+
+    req.status = payload.status
+    req.approver_id = current_employee.employee_id
+    req.approved_at = datetime.now()
+    
+    # Notification
+    notif = Notification(
+        title=f"Đơn nghỉ phép {payload.status}",
+        message=f"Đơn nghỉ phép của bạn từ {req.start_date} đến {req.end_date} đã được {payload.status}.",
+        type="leave_status",
+        sender_id=current_employee.employee_id,
+        target_type="individual"
+    )
+    db.add(notif)
     db.commit()
-    return {"message": f"Leave request {payload.status}"}
+    
+    return {"ok": True, "status": payload.status}
+
+# Helper
+async def get_leave_details(request_id: int, db: Session):
+    stmt = select(LeaveRequest, Employee, LeaveType).\
+        join(Employee, LeaveRequest.employee_id == Employee.employee_id).\
+        join(LeaveType, LeaveRequest.leave_type_id == LeaveType.leave_type_id).\
+        where(LeaveRequest.request_id == request_id)
+    
+    result = db.execute(stmt).first()
+    if not result:
+        return None
+    req, emp, ltype = result
+    approver = db.get(Employee, req.approver_id) if req.approver_id else None
+    return {
+        "request_id": req.request_id,
+        "employee_id": emp.employee_id,
+        "employee_name": emp.full_name,
+        "leave_type_name": ltype.type_name,
+        "start_date": req.start_date,
+        "end_date": req.end_date,
+        "total_days": float(req.total_days),
+        "reason": req.reason,
+        "status": req.status,
+        "approver_id": req.approver_id,
+        "approver_name": approver.full_name if approver else None,
+        "created_at": req.created_at
+    }

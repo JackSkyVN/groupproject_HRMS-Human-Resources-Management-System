@@ -1,30 +1,37 @@
-from sqlalchemy import Integer, String, Date, Time, Text, ForeignKey, Index, Boolean
-from sqlalchemy.orm import Mapped, mapped_column, relationship
-from datetime import date, time
+from sqlalchemy import Column, Integer, String, Date, Time, Numeric, DateTime, ForeignKey, Index, func
+from sqlalchemy.orm import relationship
 from app.core.database import Base
 
+
 class Attendance(Base):
+    """
+    Bảng Attendance - Chấm công (Manual/QR Code - không AI)
+    Ghi nhận giờ vào/ra, tính giờ làm, muộn, tăng ca
+    """
     __tablename__ = "attendance"
 
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
-    # Linked to Employee instead of User as per diagram
-    employee_id: Mapped[int] = mapped_column(Integer, ForeignKey("employees.id"), nullable=False, index=True)
+    attendance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    employee_id = Column(Integer, ForeignKey("employees.employee_id", ondelete="CASCADE"), nullable=False, index=True)
+    work_date = Column(Date, nullable=False, index=True)
     
-    date: Mapped[date] = mapped_column(Date, nullable=False, index=True)
-    check_in_time: Mapped[time] = mapped_column(Time, nullable=True)
-    check_out_time: Mapped[time | None] = mapped_column(Time, nullable=True)
+    # Check in/out times
+    check_in_time = Column(DateTime, nullable=True)
+    check_out_time = Column(DateTime, nullable=True)
     
-    status: Mapped[str] = mapped_column(String(50), nullable=True, index=True) # e.g. "Present", "Late", "Absent"
-    note: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Calculated fields
+    work_hours = Column(Numeric(5, 2), default=0, nullable=False)  # Số giờ làm việc
+    late_minutes = Column(Integer, default=0, nullable=False)  # Số phút đi muộn
+    overtime_hours = Column(Numeric(5, 2), default=0, nullable=False)  # Số giờ tăng ca
     
-    # AI specific fields (kept for functionality)
-    snapshot_path: Mapped[str | None] = mapped_column(String(512), nullable=True)
-    verified: Mapped[bool] = mapped_column(Boolean, default=False)
-    verification_reason: Mapped[str | None] = mapped_column(String(255), nullable=True)
+    # Status
+    status = Column(String(20), default="present", nullable=False, index=True)  # present, absent, late, half_day
+    
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Optimization: Composite index for "Get employee's attendance for a specific date"
+    # Unique constraint: one attendance record per employee per day
     __table_args__ = (
-        Index('idx_attendance_employee_date', 'employee_id', 'date'),
+        Index('idx_attendance_employee_date', 'employee_id', 'work_date', unique=True),
     )
 
-    employee = relationship("Employee")
+    # Relationships
+    employee = relationship("Employee", back_populates="attendance_records")

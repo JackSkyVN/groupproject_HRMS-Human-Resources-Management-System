@@ -1,133 +1,138 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import select, desc
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from datetime import datetime
 
 from app.core.database import get_db
-from app.models.org import Employee
-from app.models.rbac import User, Role, UserRole
-from app.models.payroll import PayrollRecord
-from app.auth.deps import require_permission, get_current_user
+from app.models.employees import Employee
+from app.models.payroll import Payroll
+from app.models.roles import Role
+from app.auth.deps import get_current_employee
 
 router = APIRouter()
 
-#                                                               --- Schemas ---
-class PayrollCreate(BaseModel):
-    employee_id: int
-    month: str
-    base_salary: float
-    bonus: float = 0
-    benefits: float = 0
-    deductions: float = 0
+# ==================== SCHEMAS ====================
 
 class PayrollOut(BaseModel):
-    id: int
+    payroll_id: int
     employee_id: int
-    employee_name: Optional[str]
-    month: str
-    base_salary: float
+    employee_name: str
+    month: int
+    year: int
+    basic_salary: float
+    actual_days: float
+    overtime_hours: float
     bonus: float
-    benefits: float
-    deductions: float
-    tax: float
+    deduction: float
+    gross_salary: float
     net_salary: float
     status: str
-    created_at: datetime
-    
+    payment_date: Optional[datetime] = None
+
     class Config:
         from_attributes = True
 
-#                                                               --- Routes ---
+class PayrollCreate(BaseModel):
+    employee_id: int
+    month: int
+    year: int
+    basic_salary: float
+    actual_days: float = 0
+    overtime_hours: float = 0
+    bonus: float = 0
+    allowance: float = 0
+    deduction: float = 0
 
-@router.post("/payroll", response_model=PayrollOut)
-def generate_payroll(
-    payload: PayrollCreate, 
+# ==================== ROUTES ====================
+
+@router.get("", response_model=List[PayrollOut])
+async def list_payroll(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_permission("system.manage")) # Chỉ Admin
+    current_employee: Employee = Depends(get_current_employee),
+    employee_id: Optional[int] = Query(None),
+    month: Optional[int] = Query(None),
+    year: Optional[int] = Query(None),
+    skip: int = 0,
+    limit: int = 100
 ):
-    emp = db.get(Employee, payload.employee_id)
-    if not emp:
-        raise HTTPException(status_code=404, detail="Employee not found")
-        
-    # Tự động tính thuế 
-    gross = payload.base_salary + payload.bonus + payload.benefits
-    tax = (gross - payload.deductions) * 0.1 
-    if tax < 0: tax = 0
-    
-    net = gross - payload.deductions - tax
-    
-    record = PayrollRecord(
-        employee_id=emp.id,
-        month=payload.month,
-        base_salary=payload.base_salary,
-        bonus=payload.bonus,
-        benefits=payload.benefits,
-        deductions=payload.deductions,
-        tax=tax,
-        net_salary=net,
-        status="Processed"
-    )
-    db.add(record)
-    db.commit()
-    db.refresh(record)
-    
-    return {
-        "id": record.id,
-        "employee_id": record.employee_id,
-        "employee_name": emp.full_name,
-        "month": record.month,
-        "base_salary": record.base_salary,
-        "bonus": record.bonus,
-        "benefits": record.benefits,
-        "deductions": record.deductions,
-        "tax": record.tax,
-        "net_salary": record.net_salary,
-        "status": record.status,
-        "created_at": record.created_at
-    }
+    """
+    Xem bảng lương theo quyền:
+    - Admin/HR Chung: Tất cả.
+    - HR Phòng ban: Nhân viên trong phòng + chính mình.
+    - Staff: Chỉ chính mình.
+    """
+    current_role = db.get(Role, current_employee.role_id)
+    level = current_role.role_level if current_role else 4
 
-@router.get("/payroll", response_model=list[PayrollOut])
-def list_payroll(
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_user)
-):
-    # Kiểm tra Admin
-    is_admin = False
-    admin_role = db.query(Role).filter(Role.name == "admin").first()
-    if admin_role and db.query(UserRole).filter(UserRole.user_id == current_user.id, UserRole.role_id == admin_role.id).first():
-        is_admin = True
-        
-    employee = db.query(Employee).filter(Employee.user_id == current_user.id).first()
+    stmt = select(Payroll, Employee).join(Employee, Payroll.employee_id == Employee.employee_id)
 
-    stmt = select(PayrollRecord).order_by(desc(PayrollRecord.month))
+    if level == 1 or level == 2:
+        pass
+    elif level == 3:
+        stmt = stmt.where(Employee.department_id == current_employee.department_id)
+    else:
+        stmt = stmt.where(Payroll.employee_id == current_employee.employee_id)
+
+    if employee_id:
+        stmt = stmt.where(Payroll.employee_id == employee_id)
+    if month:
+        stmt = stmt.where(Payroll.month == month)
+    if year:
+        stmt = stmt.where(Payroll.year == year)
+
+    results = db.execute(stmt.order_by(desc(Payroll.year), desc(Payroll.month)).offset(skip).limit(limit)).all()
     
-    if not is_admin:
-        if not employee:
-            return []
-        stmt = stmt.where(PayrollRecord.employee_id == employee.id)
-        
-    records = db.execute(stmt).scalars().all()
-    
-    results = []
-    for r in records:
-        emp_name = "Unknown"
-        if r.employee:
-            emp_name = r.employee.full_name or r.employee.email
-            
-        results.append({
-            "id": r.id,
-            "employee_id": r.employee_id,
-            "employee_name": emp_name,
-            "month": r.month,
-            "base_salary": r.base_salary,
-            "bonus": r.bonus,
-            "benefits": r.benefits,
-            "deductions": r.deductions,
-            "tax": r.tax,
-            "net_salary": r.net_salary,
-            "status": r.status,
-            "created_at": r.created_at
+    output = []
+    for p, emp in results:
+        output.append({
+            "payroll_id": p.payroll_id,
+            "employee_id": emp.employee_id,
+            "employee_name": emp.full_name,
+            "month": p.month,
+            "year": p.year,
+            "basic_salary": float(p.basic_salary),
+            "actual_days": float(p.actual_days),
+            "overtime_hours": float(p.overtime_hours),
+            "bonus": float(p.bonus),
+            "deduction": float(p.deduction),
+            "gross_salary": float(p.gross_salary),
+            "net_salary": float(p.net_salary),
+            "status": p.status,
+            "payment_date": p.payment_date
         })
-    return results
+    return output
+
+@router.post("")
+async def create_payroll(
+    payload: PayrollCreate,
+    db: Session = Depends(get_db),
+    current_employee: Employee = Depends(get_current_employee)
+):
+    """Tạo bảng lương (Admin/HR Chung)"""
+    current_role = db.get(Role, current_employee.role_id)
+    if current_role.role_level > 2:
+        raise HTTPException(status_code=403, detail="Only Admin or HR General can create payroll")
+        
+    # Tính toán sơ bộ
+    gross = payload.basic_salary + payload.bonus + payload.allowance
+    net = gross - payload.deduction
+    
+    new_p = Payroll(
+        employee_id=payload.employee_id,
+        month=payload.month,
+        year=payload.year,
+        basic_salary=payload.basic_salary,
+        actual_days=payload.actual_days,
+        overtime_hours=payload.overtime_hours,
+        bonus=payload.bonus,
+        allowance=payload.allowance,
+        deduction=payload.deduction,
+        gross_salary=gross,
+        net_salary=net,
+        status="draft"
+    )
+    db.add(new_p)
+    db.commit()
+    return {"ok": True, "payroll_id": new_p.payroll_id}
