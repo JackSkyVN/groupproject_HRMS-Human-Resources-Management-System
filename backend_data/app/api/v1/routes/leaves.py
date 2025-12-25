@@ -51,12 +51,38 @@ async def submit_leave_request(
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(get_current_employee)
 ):
-    """Gửi đơn xin nghỉ phép"""
+    """Gửi đơn xin nghỉ phép (Giới hạn tối đa 3 ngày có lương/tháng)"""
     if payload.end_date < payload.start_date:
         raise HTTPException(status_code=400, detail="End date cannot be before start date")
         
     days = (payload.end_date - payload.start_date).days + 1
     
+    # Strict Rule: Max 3 days paid leave per month
+    month = payload.start_date.month
+    year = payload.start_date.year
+    
+    # Check if leave type is paid
+    ltype = db.get(LeaveType, payload.leave_type_id)
+    if not ltype:
+        raise HTTPException(status_code=404, detail="Leave type not found")
+        
+    if ltype.is_paid:
+        # Calculate already approved + current request days in this month
+        stmt = select(func.sum(LeaveRequest.total_days)).where(
+            LeaveRequest.employee_id == current_employee.employee_id,
+            LeaveRequest.status == 'approved',
+            func.extract('month', LeaveRequest.start_date) == month,
+            func.extract('year', LeaveRequest.start_date) == year,
+            LeaveRequest.leave_type_id == payload.leave_type_id
+        )
+        existing_days = db.execute(stmt).scalar() or 0
+        
+        if (float(existing_days) + float(days)) > 3.0:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Cảnh báo: Bạn chỉ được nghỉ tối đa 3 ngày có lương mỗi tháng. Hiện tại bạn đã xin {float(existing_days) + float(days)} ngày."
+            )
+
     new_request = LeaveRequest(
         employee_id=current_employee.employee_id,
         leave_type_id=payload.leave_type_id,
@@ -72,7 +98,7 @@ async def submit_leave_request(
     
     return await get_leave_details(new_request.request_id, db)
 
-@router.get("", response_model=list[LeaveRequestOut])
+@router.get("")
 async def list_leaves(
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(get_current_employee),
@@ -114,14 +140,17 @@ async def list_leaves(
     output = []
     for req, emp, ltype in results:
         approver = db.get(Employee, req.approver_id) if req.approver_id else None
+        target_role = db.get(Role, emp.role_id)
         output.append({
             "request_id": req.request_id,
             "employee_id": emp.employee_id,
             "employee_name": emp.full_name,
+            "employee_role_level": target_role.role_level if target_role else 4,
+            "employee_dept_id": emp.department_id,
             "leave_type_name": ltype.type_name,
             "start_date": req.start_date,
             "end_date": req.end_date,
-            "total_days": float(req.total_days),
+            "total_days": float(req.total_days or 0),
             "reason": req.reason,
             "status": req.status,
             "approver_id": req.approver_id,
@@ -146,16 +175,19 @@ async def update_leave_status(
     target_role = db.get(Role, target_emp.role_id)
     current_role = db.get(Role, current_employee.role_id)
     
-    # Tiered Approval Logic
+    # Universal Approval Logic: Higher level can approve for ANY lower level
     allowed = False
-    if current_role.role_level == 1 and target_role.role_level == 2: allowed = True
-    elif current_role.role_level == 2 and target_role.role_level == 3: allowed = True
-    elif current_role.role_level == 3 and target_role.role_level == 4:
-        if target_emp.department_id == current_employee.department_id:
+    if current_role.role_level < target_role.role_level:
+        if current_role.role_level == 3:
+            # L3 only for their dept
+            if target_emp.department_id == current_employee.department_id:
+                allowed = True
+        else:
+            # L1, L2 manage all lower levels
             allowed = True
             
     if not allowed:
-        raise HTTPException(status_code=403, detail="Insufficient permissions for tiered approval")
+        raise HTTPException(status_code=403, detail="Insufficient permissions: You can only approve leaves for subordinates.")
 
     req.status = payload.status
     req.approver_id = current_employee.employee_id
@@ -185,15 +217,18 @@ async def get_leave_details(request_id: int, db: Session):
     if not result:
         return None
     req, emp, ltype = result
+    target_role = db.get(Role, emp.role_id)
     approver = db.get(Employee, req.approver_id) if req.approver_id else None
     return {
         "request_id": req.request_id,
         "employee_id": emp.employee_id,
         "employee_name": emp.full_name,
+        "employee_role_level": target_role.role_level if target_role else 4,
+        "employee_dept_id": emp.department_id,
         "leave_type_name": ltype.type_name,
         "start_date": req.start_date,
         "end_date": req.end_date,
-        "total_days": float(req.total_days),
+        "total_days": float(req.total_days or 0),
         "reason": req.reason,
         "status": req.status,
         "approver_id": req.approver_id,

@@ -1,148 +1,245 @@
 import cv2
 import time
 import os
+import json
 from datetime import datetime
-from collections import defaultdict
 
-from src.detect_faces import yolo
+import mediapipe as mp
+
+from src.video_stream import WebcamStream
+from src.detect_faces import detect_faces
 from src.recognize import recognize
 from src.attendance import log_attendance
-from src.antispoof import check_liveness  # Add anti-spoofing
+from src.antispoof import check_liveness
 
-# ======================
-# Time Configuration
-# ======================
-GLOBAL_COOLDOWN = 1.2    # delay between 2 persons (seconds)
-PER_EMP_COOLDOWN = 5.0   # prevent duplicate logs for same employee (seconds)
-DISPLAY_DURATION = 2.0   # keep name displayed after check (seconds)
+# ==========================
+# CONFIG
+# ==========================
+DB_PATH = "db/employees.json"
+SNAPSHOT_DIR = "snapshots"
 
-# ======================
-# Snapshot Configuration
-# ======================
-SNAPSHOT_DIR = "snapshots"  # snapshots/<emp_id>/*.jpg
+DISPLAY_DURATION = 3.0
+AVATAR_SIZE = (70, 70)
+
+LIVENESS_CHECK_INTERVAL = 5
+RECOGNITION_INTERVAL = 3
+
+SHOW_TERMINAL_LOG = True
+
 os.makedirs(SNAPSHOT_DIR, exist_ok=True)
 
+# ==========================
+# MediaPipe Face Mesh
+# ==========================
+mp_face_mesh = mp.solutions.face_mesh
+face_mesh = mp_face_mesh.FaceMesh(
+    static_image_mode=False,
+    max_num_faces=1,
+    refine_landmarks=True,
+    min_detection_confidence=0.5,
+    min_tracking_confidence=0.5
+)
 
-def save_snapshot(emp_id, face):
-    """Save cropped face image to snapshots/<emp_id>/"""
+# ==========================
+# UI STATE
+# ==========================
+last_display_name = None
+last_display_time = None
+last_display_timestamp = 0.0
+last_avatar = None
+last_status_text = None
+last_status_color = (255, 255, 255)
+
+# ==========================
+# UTILS
+# ==========================
+def load_db():
+    if not os.path.exists(DB_PATH):
+        return {}
+    with open(DB_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def load_avatar(emp_id):
+    db = load_db()
     try:
-        emp_dir = os.path.join(SNAPSHOT_DIR, str(emp_id))
-        os.makedirs(emp_dir, exist_ok=True)
-        filename = f"{emp_id}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.jpg"
-        cv2.imwrite(os.path.join(emp_dir, filename), face)
-    except Exception as e:
-        print(f"[WARN] Failed to save snapshot for {emp_id}: {e}")
+        avatar_path = db[str(emp_id)].get("avatar")
+        if avatar_path and os.path.exists(avatar_path):
+            img = cv2.imread(avatar_path)
+            return cv2.resize(img, AVATAR_SIZE)
+    except:
+        pass
+    return None
 
 
+def draw_corner_bbox(frame, x1, y1, x2, y2, color=(0, 255, 255)):
+    t = 2
+    l = 20
+    cv2.line(frame, (x1, y1), (x1 + l, y1), color, t)
+    cv2.line(frame, (x1, y1), (x1, y1 + l), color, t)
+    cv2.line(frame, (x2, y1), (x2 - l, y1), color, t)
+    cv2.line(frame, (x2, y1), (x2, y1 + l), color, t)
+    cv2.line(frame, (x1, y2), (x1 + l, y2), color, t)
+    cv2.line(frame, (x1, y2), (x1, y2 - l), color, t)
+    cv2.line(frame, (x2, y2), (x2 - l, y2), color, t)
+    cv2.line(frame, (x2, y2), (x2, y2 - l), color, t)
+
+
+def get_square_face(frame, x1, y1, x2, y2):
+    h = y2 - y1
+    w = x2 - x1
+    size = max(h, w)
+
+    cx = (x1 + x2) // 2
+    cy = (y1 + y2) // 2
+
+    x1n = max(cx - size // 2, 0)
+    y1n = max(cy - size // 2, 0)
+    x2n = min(x1n + size, frame.shape[1])
+    y2n = min(y1n + size, frame.shape[0])
+
+    return frame[y1n:y2n, x1n:x2n], x1n, y1n
+
+
+def draw_face_mesh(frame, face_img, offset_x, offset_y):
+    rgb = cv2.cvtColor(face_img, cv2.COLOR_BGR2RGB)
+    results = face_mesh.process(rgb)
+
+    if not results.multi_face_landmarks:
+        return
+
+    h, w, _ = face_img.shape
+    for lm in results.multi_face_landmarks[0].landmark:
+        px = int(lm.x * w) + offset_x
+        py = int(lm.y * h) + offset_y
+        cv2.circle(frame, (px, py), 1, (255, 255, 255), -1)
+
+
+# ==========================
+# MAIN
+# ==========================
 def realtime_attendance():
-    cap = cv2.VideoCapture(0)
-    print("[INFO] Realtime Attendance System Started (press 'q' to quit)")
+    global last_display_name, last_display_time, last_display_timestamp
+    global last_avatar, last_status_text, last_status_color
 
-    # Store timestamps for logging and display
-    last_any_log = 0.0
-    last_emp_log = defaultdict(lambda: 0.0)
-    last_display = defaultdict(lambda: 0.0)
+    cap = WebcamStream(src=0).start()
+    print("[INFO] Realtime Attendance Started — Press Q to quit")
+
+    frame_count = 0
+    prev_time = time.time()
 
     while True:
-        ret, frame = cap.read()
-        if not ret:
-            break
+        frame = cap.read()
+        if frame is None:
+            continue
+
+        frame = cv2.resize(frame, (640, 480))
+        annotated = frame.copy()
 
         now = time.time()
-        results = yolo(frame)
-        annotated = results[0].plot()
+        frame_count += 1
 
-        # Check cooldown between persons (queue)
-        global_ready = (now - last_any_log) >= GLOBAL_COOLDOWN
+        fps = 1.0 / max(now - prev_time, 1e-6)
+        prev_time = now
 
-        for r in results:
-            boxes = r.boxes.xyxy.cpu().numpy()
+        start_detect = time.time()
+        boxes = detect_faces(frame)
+        detect_ms = (time.time() - start_detect) * 1000
 
-            for box in boxes:
-                x1, y1, x2, y2 = map(int, box[:4])
-                face = frame[y1:y2, x1:x2]
-                if face.size <= 0:
-                    continue
+        if SHOW_TERMINAL_LOG:
+            print(f"[FPS] {fps:.1f} | Faces={len(boxes)} | Detect={detect_ms:.2f}ms")
 
-                # Anti-spoofing check
-                is_real = check_liveness(face)
-                if not is_real:
-                    cv2.putText(
-                        annotated,
-                        "FAKE FACE DETECTED!",
-                        (x1, y1 - 10),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.7,
-                        (0, 0, 255),
-                        2,
-                    )
-                    continue
+        if boxes:
+            x1, y1, x2, y2 = max(
+                boxes, key=lambda b: (b[2] - b[0]) * (b[3] - b[1])
+            )
 
-                # Face recognition
-                emp_id, name = recognize(face)
-                if emp_id is None or name == "Unknown":
-                    continue
+            face_sq, fx, fy = get_square_face(frame, x1, y1, x2, y2)
+            if face_sq.size > 0:
+                draw_corner_bbox(annotated, x1, y1, x2, y2)
+                draw_face_mesh(annotated, face_sq, fx, fy)
 
-                # Per-employee cooldown
-                if (now - last_emp_log[emp_id]) < PER_EMP_COOLDOWN:
-                    if now - last_display[emp_id] <= DISPLAY_DURATION:
-                        cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                        cv2.putText(
-                            annotated,
-                            f"{emp_id} - {name}",
-                            (x1, y1 - 10),
-                            cv2.FONT_HERSHEY_SIMPLEX,
-                            0.7,
-                            (0, 255, 0),
-                            2,
-                        )
-                    continue
+                if frame_count % LIVENESS_CHECK_INTERVAL == 0:
+                    t0 = time.time()
+                    is_real = check_liveness(face_sq)
+                    live_ms = (time.time() - t0) * 1000
 
-                # Not ready for next person
-                if not global_ready:
-                    cv2.putText(
-                        annotated,
-                        "Please wait... next person in queue",
-                        (20, 40),
-                        cv2.FONT_HERSHEY_SIMPLEX,
-                        0.8,
-                        (0, 255, 255),
-                        2,
-                    )
-                    continue
+                    if SHOW_TERMINAL_LOG:
+                        print(f"[LIVENESS] real={is_real} | {live_ms:.2f}ms")
 
-                # Log attendance (Check-in / Check-out)
-                log_attendance(emp_id)
-                save_snapshot(emp_id, face)
+                    if not is_real:
+                        last_display_name = "Unknown"
+                        last_status_text = "FAKE"
+                        last_status_color = (0, 0, 255)
+                        last_display_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_display_timestamp = now
+                        last_avatar = cv2.resize(face_sq, AVATAR_SIZE)
 
-                # Display info
-                cv2.rectangle(annotated, (x1, y1), (x2, y2), (0, 255, 0), 2)
-                cv2.putText(
-                    annotated,
-                    f"{emp_id} - {name}",
-                    (x1, y1 - 10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.7,
-                    (0, 255, 0),
-                    2,
-                )
+                if frame_count % RECOGNITION_INTERVAL == 0:
+                    t1 = time.time()
+                    emp_id, name = recognize(face_sq)
+                    rec_ms = (time.time() - t1) * 1000
 
-                # Update timestamps
-                last_emp_log[emp_id] = now
-                last_display[emp_id] = now
-                last_any_log = now
-                global_ready = False
-                break  # prevent duplicate logs in same frame
+                    if SHOW_TERMINAL_LOG:
+                        print(f"[RECOGNIZE] ID={emp_id} | {rec_ms:.2f}ms")
 
-        # Display frame
-        cv2.imshow("Realtime Attendance (Queue Mode)", annotated)
+                    if emp_id is None:
+                        last_display_name = "Unknown"
+                        last_status_text = "REAL (Unknown)"
+                        last_status_color = (0, 255, 255)
+                        last_display_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_display_timestamp = now
+                        last_avatar = cv2.resize(face_sq, AVATAR_SIZE)
+                    else:
+                        log_attendance(emp_id)
+
+                        last_display_name = name
+                        last_status_text = "REAL"
+                        last_status_color = (0, 255, 0)
+                        last_display_time = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                        last_display_timestamp = now
+
+                        avatar = load_avatar(emp_id)
+                        last_avatar = avatar if avatar is not None else cv2.resize(face_sq, AVATAR_SIZE)
+
+        if last_display_name and (now - last_display_timestamp) <= DISPLAY_DURATION:
+            h, w, _ = annotated.shape
+            bar_h = 100
+
+            overlay = annotated.copy()
+            cv2.rectangle(overlay, (0, h - bar_h), (w, h), (0, 0, 0), -1)
+            annotated = cv2.addWeighted(overlay, 0.55, annotated, 0.45, 0)
+
+            ax, ay = 20, h - bar_h + 15
+            if last_avatar is not None:
+                annotated[ay:ay+70, ax:ax+70] = last_avatar
+
+            tx = ax + 90
+            cv2.putText(annotated, f"Employee: {last_display_name}",
+                        (tx, h - bar_h + 35),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.75, (255, 255, 255), 2)
+
+            cv2.putText(annotated, f"Status: {last_status_text}",
+                        (tx, h - bar_h + 65),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.75, last_status_color, 2)
+
+            cv2.putText(annotated, f"Time: {last_display_time}",
+                        (tx, h - bar_h + 90),
+                        cv2.FONT_HERSHEY_SIMPLEX, 0.65, (200, 200, 200), 2)
+
+        cv2.imshow("Realtime Attendance", annotated)
+
         if cv2.waitKey(1) & 0xFF == ord("q"):
             break
 
-    cap.release()
+    cap.stop()
     cv2.destroyAllWindows()
 
 
-if __name__ == "__main__":
-    realtime_attendance()
+
+
+
+
+
+
 

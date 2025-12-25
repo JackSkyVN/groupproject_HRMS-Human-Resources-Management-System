@@ -14,17 +14,21 @@ class Attendance(Base):
     employee_id = Column(Integer, ForeignKey("employees.employee_id", ondelete="CASCADE"), nullable=False, index=True)
     work_date = Column(Date, nullable=False, index=True)
     
-    # Check in/out times
+    # Main Shift (08:30 - 17:30)
     check_in_time = Column(DateTime, nullable=True)
     check_out_time = Column(DateTime, nullable=True)
+    status = Column(String(20), default="absent", nullable=False, index=True)  # present, absent, late, etc.
     
-    # Calculated fields
-    work_hours = Column(Numeric(5, 2), default=0, nullable=False)  # Số giờ làm việc
-    late_minutes = Column(Integer, default=0, nullable=False)  # Số phút đi muộn
-    overtime_hours = Column(Numeric(5, 2), default=0, nullable=False)  # Số giờ tăng ca
+    # OT Shift (18:00 - 22:00)
+    ot_check_in_time = Column(DateTime, nullable=True)
+    ot_check_out_time = Column(DateTime, nullable=True)
+    ot_status = Column(String(20), default="absent", nullable=False) # present_ot, absent_ot
     
-    # Status
-    status = Column(String(20), default="present", nullable=False, index=True)  # present, absent, late, half_day
+    # Calculated fields (Merged or separate?)
+    work_hours = Column(Numeric(5, 2), default=0, nullable=False)  # Tổng giờ làm việc (Main)
+    late_minutes = Column(Integer, default=0, nullable=False)
+    early_leave_minutes = Column(Integer, default=0, nullable=False)
+    overtime_hours = Column(Numeric(5, 2), default=0, nullable=False) # Tổng giờ OT
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 

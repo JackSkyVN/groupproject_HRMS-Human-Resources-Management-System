@@ -26,6 +26,7 @@ class Employee(Base):
     manager_id = Column(Integer, ForeignKey("employees.employee_id"), nullable=True, index=True)
     
     hire_date = Column(Date, nullable=False)
+    salary = Column(Integer, nullable=True, index=True)  # Monthly salary in USD
     status = Column(String(20), default="active", nullable=False, index=True)  # active, inactive, terminated
     
     # Authentication

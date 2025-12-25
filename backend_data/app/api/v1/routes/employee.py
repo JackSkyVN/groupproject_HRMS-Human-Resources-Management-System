@@ -10,14 +10,37 @@ from app.models.employees import Employee
 from app.models.roles import Role
 from app.models.departments import Department
 from app.models.positions import Position
-from app.auth.deps import get_current_employee, require_role_level
+from app.auth.deps import get_current_employee, require_role_level, require_permission
 
 router = APIRouter()
 
 # ==================== SCHEMAS ====================
 
+class DepartmentOut(BaseModel):
+    department_id: int
+    department_name: str
+    department_code: str
+    
+    class Config:
+        from_attributes = True
+
+class RoleOut(BaseModel):
+    role_id: int
+    role_name: str
+    role_level: int
+    
+    class Config:
+        from_attributes = True
+
+class PositionOut(BaseModel):
+    position_id: int
+    position_name: str
+    
+    class Config:
+        from_attributes = True
+
 class EmployeeBase(BaseModel):
-    employee_code: str
+    employee_code: Optional[str] = None
     full_name: str
     email: EmailStr
     username: str
@@ -26,7 +49,8 @@ class EmployeeBase(BaseModel):
     hire_date: date
     department_id: Optional[int] = None
     position_id: Optional[int] = None
-    role_id: int
+    role_id: Optional[int] = None  # Will be auto-assigned based on creator's level
+    salary: Optional[int] = None  # Will be auto-calculated based on position
     manager_id: Optional[int] = None
 
 class EmployeeCreate(EmployeeBase):
@@ -75,11 +99,22 @@ def get_employee_with_details(db: Session, employee_id: int):
         
     emp, role, dept, pos = result
     return {
-        **emp.__dict__,
+        "employee_id": emp.employee_id,
+        "employee_code": emp.employee_code,
+        "full_name": emp.full_name,
+        "email": emp.email,
+        "username": emp.username,
+        "phone": emp.phone,
+        "department_id": emp.department_id,
+        "position_id": emp.position_id,
+        "role_id": emp.role_id,
         "role_name": role.role_name,
         "role_level": role.role_level,
-        "department_name": dept.department_name if dept else None,
-        "position_name": pos.position_name if pos else None
+        "department_name": dept.department_name if dept else "N/A",
+        "position_name": pos.position_name if pos else "N/A",
+        "status": emp.status,
+        "hire_date": emp.hire_date,
+        "salary": emp.salary
     }
 
 # ==================== ROUTES ====================
@@ -92,20 +127,13 @@ async def get_my_profile(
     """Lấy thông tin profile cá nhân"""
     return get_employee_with_details(db, current_employee.employee_id)
 
-@router.get("", response_model=list[EmployeeOut])
+@router.get("")
 async def list_employees(
     db: Session = Depends(get_db),
-    current_employee: Employee = Depends(get_current_employee),
-    skip: int = 0,
-    limit: int = 100
+    current_employee: Employee = Depends(get_current_employee)
 ):
-    """
-    Hiển thị danh sách nhân viên theo quyền:
-    - Admin (L1): Xem tất cả.
-    - HR Chung (L2): Xem tất cả.
-    - HR Phòng ban (L3): Xem nhân viên trong phòng.
-    - Staff (L4): Chỉ xem chính mình.
-    """
+    skip: int = 0
+    limit: int = 100
     current_role = db.get(Role, current_employee.role_id)
     level = current_role.role_level if current_role else 4
 
@@ -115,13 +143,10 @@ async def list_employees(
         outerjoin(Position, Employee.position_id == Position.position_id)
 
     if level == 1 or level == 2:
-        # Admin / HR Chung see all
         pass
     elif level == 3:
-        # HR Dept see their own dept
         stmt = stmt.where(Employee.department_id == current_employee.department_id)
     else:
-        # Staff only see themselves
         stmt = stmt.where(Employee.employee_id == current_employee.employee_id)
 
     results = db.execute(stmt.offset(skip).limit(limit)).all()
@@ -129,75 +154,84 @@ async def list_employees(
     output = []
     for emp, role, dept, pos in results:
         output.append({
-            **emp.__dict__,
+            "employee_id": emp.employee_id,
+            "employee_code": emp.employee_code,
+            "full_name": emp.full_name,
+            "email": emp.email,
+            "username": emp.username,
+            "phone": emp.phone,
             "role_name": role.role_name,
             "role_level": role.role_level,
-            "department_name": dept.department_name if dept else None,
-            "position_name": pos.position_name if pos else None
+            "department_name": dept.department_name if dept else "N/A",
+            "position_name": pos.position_name if pos else "N/A",
+            "status": emp.status,
+            "hire_date": emp.hire_date
         })
     return output
 
-@router.post("", response_model=EmployeeOut)
+@router.post("")
 async def create_employee(
-    payload: EmployeeCreate,
+    data: dict,  # Accept raw dict - NO VALIDATION!
     current_employee: Employee = Depends(get_current_employee),
     db: Session = Depends(get_db)
 ):
-    """
-    Tạo nhân viên theo phân cấp Tiered CRUD:
-    - Admin (L1): CRUD HR Chung (L2).
-    - HR Chung (L2): CRUD Giám đốc + HR Phòng ban (L3).
-    - HR Phòng ban (L3): CRUD Staff (L4) trong phòng.
-    """
+    """Simple employee creation - no validation"""
     from passlib.context import CryptContext
     pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
     
+    print(f"🔍 RAW DATA RECEIVED: {data}")
+    
+    # Get current user's role
     current_role = db.get(Role, current_employee.role_id)
     current_level = current_role.role_level
     
-    target_role = db.get(Role, payload.role_id)
-    if not target_role:
-        raise HTTPException(status_code=404, detail="Target role not found")
-    target_level = target_role.role_level
-
-    # Kiểm tra phân cấp Tiered CRUD
-    allowed = False
-    if current_level == 1: # Admin
-        if target_level == 2: allowed = True # Admin -> HR Chung
-        else: raise HTTPException(status_code=403, detail="Admin can only create HR General accounts")
-        
-    elif current_level == 2: # HR Chung
-        if target_level == 3: allowed = True # HR Chung -> HR Dept
-        # Ngoài ra HR Chung có thể tạo Giám đốc (nhưng Giám đốc thường là level 2 hoặc 3 tùy vị trí)
-        # Theo yêu cầu user: HR Chung CRUD giám đốc + HR phòng ban
-        else: raise HTTPException(status_code=403, detail="HR General can only create HR Department accounts")
-        
-    elif current_level == 3: # HR Dept
-        if target_level == 4: # HR Dept -> Staff
-            if payload.department_id != current_employee.department_id:
-                raise HTTPException(status_code=403, detail="HR Department can only create staff for their own department")
-            allowed = True
-        else: raise HTTPException(status_code=403, detail="HR Department can only create Staff accounts")
+    # Auto-assign role based on creator level
+    # Restricted Creation Logic (Reverted Part 4)
+    if current_level == 1:  # Admin only creates Level 2
+        target_role = db.query(Role).filter(Role.role_level == 2).first()
+    elif current_level == 2:  # HR Manager creates L3
+        target_role = db.query(Role).filter(Role.role_level == 3).first()
+    elif current_level == 3:  # HR Dept creates L4
+        target_role = db.query(Role).filter(Role.role_level == 4).first()
+    else:
+        raise HTTPException(status_code=403, detail="Cannot create employees")
     
-    if not allowed:
-        raise HTTPException(status_code=403, detail="Insufficient permissions for tiered CRUD")
-
-    # Check existence
-    if db.query(Employee).filter(or_(Employee.username == payload.username, Employee.email == payload.email)).first():
-        raise HTTPException(status_code=400, detail="Username or Email already exists")
-
+    # Auto-calculate salary if not provided
+    salary = data.get('salary') or 2000
+    
+    # Check username uniqueness (email can be duplicate)
+    if db.query(Employee).filter(Employee.username == data['username']).first():
+        raise HTTPException(status_code=400, detail=f"Username '{data['username']}' already exists")
+    
+    # Generate employee code
+    import random
+    emp_code = f"FIN-{random.randint(1000, 9999)}"
+    
+    # Create employee
     new_emp = Employee(
-        **payload.dict(exclude={"password"}),
-        password_hash=pwd_context.hash(payload.password),
+        employee_code=emp_code,
+        full_name=data['full_name'],
+        username=data['username'],
+        email=data['email'],
+        phone=data.get('phone'),
+        hire_date=data.get('hire_date', '2025-12-24'),
+        department_id=int(data['department_id']),
+        position_id=int(data['position_id']),
+        role_id=target_role.role_id,
+        salary=int(salary),
+        password_hash=pwd_context.hash(data['password']),
         created_by=current_employee.employee_id
     )
+    
     db.add(new_emp)
     db.commit()
     db.refresh(new_emp)
     
-    return get_employee_with_details(db, new_emp.employee_id)
+    print(f"✅ EMPLOYEE CREATED: {new_emp.employee_code}")
+    
+    return {"message": "Success", "employee_code": new_emp.employee_code}
 
-@router.get("/{id}", response_model=EmployeeOut)
+@router.get("/{id}")
 async def get_employee(
     id: int,
     current_employee: Employee = Depends(get_current_employee),
@@ -215,7 +249,7 @@ async def get_employee(
         
     return emp_details
 
-@router.put("/{id}", response_model=EmployeeOut)
+@router.put("/{id}")
 async def update_employee_route(
     id: int,
     payload: EmployeeUpdate,
@@ -230,15 +264,21 @@ async def update_employee_route(
     current_role = db.get(Role, current_employee.role_id)
     target_role = db.get(Role, target_emp.role_id)
     
-    # Tiered CRUD Logic
-    if current_role.role_level == 1 and target_role.role_level == 2: pass
-    elif current_role.role_level == 2 and target_role.role_level == 3: pass
-    elif current_role.role_level == 3 and target_role.role_level == 4:
-        if target_emp.department_id != current_employee.department_id:
-            raise HTTPException(status_code=403, detail="Department mismatch")
-    elif id == current_employee.employee_id: pass # Can update self
-    else:
-        raise HTTPException(status_code=403, detail="Tiered CRUD permission denied")
+    # Universal Admin Authority Logic: Higher level can manage ANY lower level
+    is_authorized = False
+    if current_role.role_level < target_role.role_level:
+        # L1 manage L2,L3,L4 | L2 manage L3,L4 | L3 manage L4
+        if current_role.role_level == 3:
+            # L3 still restricted to department
+            if target_emp.department_id == current_employee.department_id:
+                is_authorized = True
+        else:
+            is_authorized = True
+    elif id == current_employee.employee_id:
+        is_authorized = True # Can update self
+        
+    if not is_authorized:
+        raise HTTPException(status_code=403, detail="Permission denied: You can only manage subordinates.")
 
     for key, value in payload.dict(exclude_unset=True).items():
         setattr(target_emp, key, value)
@@ -264,17 +304,36 @@ async def delete_employee_route(
     current_role = db.get(Role, current_employee.role_id)
     target_role = db.get(Role, target_emp.role_id)
     
-    # Tiered CRUD Logic
+    # Universal Permission Check
     allowed = False
-    if current_role.role_level == 1 and target_role.role_level == 2: allowed = True
-    elif current_role.role_level == 2 and target_role.role_level == 3: allowed = True
-    elif current_role.role_level == 3 and target_role.role_level == 4:
-        if target_emp.department_id == current_employee.department_id:
+    if current_role.role_level < target_role.role_level:
+        if current_role.role_level == 3:
+            if target_emp.department_id == current_employee.department_id:
+                allowed = True
+        else:
             allowed = True
             
     if not allowed:
-        raise HTTPException(status_code=403, detail="Tiered CRUD permission denied")
+        raise HTTPException(status_code=403, detail="Permission denied: You can only delete subordinates.")
 
+    # Hard Delete (Reverted Part 3)
     db.delete(target_emp)
     db.commit()
-    return {"ok": True, "message": "Employee deleted"}
+    return {"ok": True, "message": "Employee deleted permanently"}
+
+# ==================== METADATA ROUTES ====================
+
+@router.get("/departments")
+async def list_departments(db: Session = Depends(get_db)):
+    depts = db.query(Department).all()
+    return [{"department_id": d.department_id, "department_name": d.department_name} for d in depts]
+
+@router.get("/roles")
+async def list_roles(db: Session = Depends(get_db)):
+    roles = db.query(Role).all()
+    return [{"role_id": r.role_id, "role_name": r.role_name, "role_level": r.role_level} for r in roles]
+
+@router.get("/positions")
+async def list_positions(db: Session = Depends(get_db)):
+    positions = db.query(Position).all()
+    return [{"position_id": p.position_id, "position_name": p.position_name} for p in positions]

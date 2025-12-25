@@ -13,6 +13,7 @@ from app.models.payroll import Payroll
 from app.models.payroll_detail import PayrollDetail
 from app.models.notification import Notification
 from app.models.notification_recipient import NotificationRecipient
+from app.models.salary_adjustment import SalaryAdjustment
 
 __all__ = [
     "Role",
@@ -29,4 +30,5 @@ __all__ = [
     "PayrollDetail",
     "Notification",
     "NotificationRecipient",
+    "SalaryAdjustment",
 ]

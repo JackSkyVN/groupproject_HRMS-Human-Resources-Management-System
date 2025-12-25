@@ -15,6 +15,7 @@ class NotificationRecipient(Base):
     employee_id = Column(Integer, ForeignKey("employees.employee_id", ondelete="CASCADE"), nullable=False, index=True)
     
     is_read = Column(Boolean, default=False, nullable=False, index=True)
+    is_hidden = Column(Boolean, default=False, nullable=False, index=True)
     read_at = Column(DateTime, nullable=True)
 
     # Composite index for faster queries

@@ -35,6 +35,8 @@ class TokenResponse(BaseModel):
     full_name: str
     role_name: str
     role_level: int
+    department_id: int
+    position_id: int
 
 
 class EmployeeProfileResponse(BaseModel):
@@ -111,7 +113,9 @@ def login(data: LoginRequest, db: Session = Depends(get_db)):
         employee_code=employee.employee_code,
         full_name=employee.full_name,
         role_name=role.role_name,
-        role_level=role.role_level
+        role_level=role.role_level,
+        department_id=employee.department_id,
+        position_id=employee.position_id
     )
 
 
@@ -149,6 +153,40 @@ def get_current_employee_profile(
     )
 
 
+class UpdateProfileRequest(BaseModel):
+    full_name: str
+    email: str
+
+
+@router.put("/auth/me")
+def update_current_employee_profile(
+    data: UpdateProfileRequest,
+    current_employee: Employee = Depends(get_current_employee),
+    db: Session = Depends(get_db)
+):
+    """
+    Cập nhật thông tin profile của employee hiện tại
+    Chỉ cho phép update: full_name, email
+    Không cho phép update: username, employee_code, role, department, position
+    """
+    # Validate email format
+    import re
+    email_pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
+    if not re.match(email_pattern, data.email):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid email format"
+        )
+    
+    # Update fields
+    current_employee.full_name = data.full_name
+    current_employee.email = data.email
+    db.commit()
+    db.refresh(current_employee)
+    
+    return {"message": "Profile updated successfully", "full_name": current_employee.full_name, "email": current_employee.email}
+
+
 @router.post("/auth/change-password")
 def change_password(
     data: ChangePasswordRequest,
@@ -158,6 +196,7 @@ def change_password(
     """
     Đổi mật khẩu cho employee hiện tại
     Yêu cầu mật khẩu cũ để xác nhận
+    Password mới phải đáp ứng điều kiện: 8+ ký tự, chữ hoa, chữ thường, số, ký tự đặc biệt
     """
     # Verify old password
     if not pwd_context.verify(data.old_password, current_employee.password_hash):
@@ -166,11 +205,38 @@ def change_password(
             detail="Incorrect old password"
         )
     
-    # Validate new password (basic validation)
-    if len(data.new_password) < 6:
+    # Strong password validation
+    import re
+    password = data.new_password
+    
+    if len(password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="New password must be at least 6 characters"
+            detail="Password must be at least 8 characters long"
+        )
+    
+    if not re.search(r'[A-Z]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one uppercase letter"
+        )
+    
+    if not re.search(r'[a-z]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one lowercase letter"
+        )
+    
+    if not re.search(r'[0-9]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one number"
+        )
+    
+    if not re.search(r'[!@#$%^&*(),.?":{}|<>]', password):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Password must contain at least one special character (!@#$%^&*)"
         )
     
     # Update password
