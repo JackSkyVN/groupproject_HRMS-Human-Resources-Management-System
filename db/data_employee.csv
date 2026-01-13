@@ -1,0 +1,204 @@
+﻿Employee ID,Full Name,Position,Department,Date of Birth,Phone/ID,Username,Password,Role,Permission_Level
+519,Tô Văn Hà,Acting Deputy Director,IT Department,1979-02-11,987168217,to1979714,hrm@1,Admin,1
+250,Trương Việt Đông,Chairman of Members' Council,Members' Council,1979-08-17,955845695,truong1979746,hrm@1,Director,2
+22,Hà Bắc Sơn,Acting Deputy Director,HR Department,1972-10-21,502311090,ha1972816,hrm@1,HR Department,3
+271,Đinh Quang Huy,Deputy Director of Department,HR Department,1987-09-15,771070486,đinh1987595,hrm@1,HR Department,3
+348,Trần Thị Hồng Loan,Specialist,HR Department,1978-07-05,996689445,tran1978212,hrm@1,HR Department,4_1
+129,Tống Thị Ngân,Specialist,HR Department,1985-07-05,841173748,tong1985928,hrm@1,HR Department,4_2
+544,Phan Thị Thùy Linh,Specialist,HR Department,1999-09-01,724418143,phan1999383,hrm@1,HR Department,4_3
+30,Trần Hải Yến,Specialist,HR Department,1982-01-01,841103120,tran1982460,hrm@1,HR Department,4_4
+261,Bùi Minh Phượng,Specialist,HR Department,1988-10-01,807473968,bui1988037,hrm@1,HR Department,4_5
+333,Phan Thị Liên,Deputy Head of Division,Administration Department,1972-11-14,842556798,phan1972581,hrm@1,Staff,5_4
+185,Phan Ngọc Chung,Deputy Head of Division,Administration Department,1983-03-08,302474983,phan1983944,hrm@1,Staff,5_4
+390,Đinh Quốc Hùng,Driver,Administration Department,1969-03-14,367938742,đinh1969674,hrm@1,Staff,5_4
+380,Phan Đức Hoanh,Driver,Administration Department,1971-04-11,379463518,phan1971011,hrm@1,Staff,5_4
+257,Nguyễn Ngọc Oanh,Driver,Administration Department,1973-06-08,316878260,nguyen1973840,hrm@1,Staff,5_4
+215,Phan Tấn Phụng,Driver,Administration Department,1968-07-04,823987661,phan1968629,hrm@1,Staff,5_4
+258,Dương Viết Trách,Driver,Administration Department,1981-04-14,719971131,duong1981716,hrm@1,Staff,5_4
+393,Huỳnh Duy Tân,Driver,Administration Department,1970-05-25,953156422,huynh1970944,hrm@1,Staff,5_4
+299,Nguyễn Mạnh Tuấn,Head of Division,Administration Department,1976-10-16,706023723,nguyen1976648,hrm@1,Staff,5_4
+171,Hoàng Thị Lan,Specialist,Administration Department,1983-10-21,815216365,hoang1983031,hrm@1,Staff,5_4
+355,Nguyễn Phúc Nguyên,Specialist,Administration Department,1985-08-07,576009890,nguyen1985645,hrm@1,Staff,5_4
+344,Nguyễn Khắc Sơn,Specialist,Administration Department,1979-10-06,589528315,nguyen1979217,hrm@1,Staff,5_4
+317,Phạm Ngọc Hiền,Specialist,Administration Department,1979-10-11,323722564,pham1979293,hrm@1,Staff,5_4
+335,Trần Hùng Thái,Specialist,Administration Department,1977-04-24,589023312,tran1977464,hrm@1,Staff,5_4
+300,Nguyễn Thị Hoài,Specialist,Administration Department,1984-10-29,863035546,nguyen1984594,hrm@1,Staff,5_4
+508,Lê Huy Hoàng,Specialist,Administration Department,1965-03-13,776200635,le1965462,hrm@1,Staff,5_4
+434,Vũ Thị Hồng Khanh,Specialist,Administration Department,1991-07-09,739132521,vu1991448,hrm@1,Staff,5_4
+162,Lưu Thị Nhung,"Specialist, VT",Administration Department,1986-10-05,354883270,luu1986387,hrm@1,Staff,5_4
+278,Tôn Nữ Thủy Trâm Anh,Staff,Administration Department,1987-05-20,877962594,ton1987297,hrm@1,Staff,5_4
+199,Nguyễn Thị Lan,Staff,Administration Department,1975-06-15,356711566,nguyen1975658,hrm@1,Staff,5_4
+203,Đỗ Văn Hòa,Deputy Director of Department,Appraisal Department,1977-07-22,868355778,đo1977262,hrm@1,Staff,5_4
+73,Nguyễn Khải Hoàn,Deputy Director of Department,Appraisal Department,1974-03-17,770016631,nguyen1974372,hrm@1,Staff,5_4
+66,Phan Việt Hùng,Deputy Director of Department,Appraisal Department,1974-09-22,889392344,phan1974045,hrm@1,Staff,5_4
+170,Khúc Huy Trọng,Engineer,Appraisal Department,1975-11-05,984466171,khuc1975406,hrm@1,Staff,5_4
+224,Nguyễn Anh Đức,Specialist,Appraisal Department,1975-04-01,584823745,nguyen1975371,hrm@1,Staff,5_4
+347,Hoàng Thị Quế Hằng,Specialist,Appraisal Department,1989-09-23,869698332,hoang1989285,hrm@1,Staff,5_4
+275,Lê Thanh Hoài,Specialist,Appraisal Department,1987-12-18,586146201,le1987276,hrm@1,Staff,5_4
+511,Đinh Bộ Lĩnh,Specialist,Appraisal Department,1977-01-02,733928964,đinh1977954,hrm@1,Staff,5_4
+4,Mai Đăng Nguyên,Specialist,Appraisal Department,1986-08-17,560067252,mai1986606,hrm@1,Staff,5_4
+424,Phí Quang Trung,Specialist,Appraisal Department,1981-07-12,944154778,phi1981494,hrm@1,Staff,5_4
+514,Đặng Hữu Vị,Acting Deputy Director,Board of Directors,1974-06-06,931728862,đang1974357,hrm@1,Staff,5_5
+531,Nguyễn Hoàng Khánh,Deputy Director,Board of Directors,1977-02-09,563591543,nguyen1977113,hrm@1,Staff,5_5
+39,Nguyễn Từ,Deputy Director of Department,Board of Directors,1976-09-25,971430564,nguyen1976755,hrm@1,Staff,5_5
+153,Đào Quang Tuấn,Director of Department,Board of Directors,1974-12-27,565679529,đao1974120,hrm@1,Staff,5_5
+122,Lê Anh Tuấn,Director of Department,Board of Directors,1979-06-15,810185079,le1979584,hrm@1,Staff,5_5
+522,Hàn Mai Nga,Chief Accountant,Board of General Directors,1981-12-12,966387924,han1981934,hrm@1,Staff,5_5
+373,Nguyễn Thế Cường,Deputy General Director,Board of General Directors,1977-11-07,988042705,nguyen1977407,hrm@1,Staff,5_5
+563,Kiều Hưng,Deputy General Director,Board of General Directors,1972-11-16,953280696,kieu1972806,hrm@1,Staff,5_5
+316,Đặng Hoài Nam,Deputy General Director - Head of Department,Board of General Directors,1971-05-09,524334162,đang1971515,hrm@1,Staff,5_5
+81,Nguyễn Lê Hiệp,Driver,CGNB Monitoring Office,1974-08-12,749763688,nguyen1974964,hrm@1,Staff,5_3
+168,Trịnh Ngọc Tuyên,Head of Division,CGNB Monitoring Office,1975-02-03,361502726,trinh1975901,hrm@1,Staff,5_3
+442,Nguyễn Quốc Đạt,Specialist,CGNB Monitoring Office,1984-12-22,855942496,nguyen1984534,hrm@1,Staff,5_3
+408,Phạm Thanh Tùng,Specialist,CGNB Monitoring Office,1991-10-31,327076546,pham1991020,hrm@1,Staff,5_3
+19,Vũ Tiến Dũng,Specialist,CGNB Monitoring Office,1980-10-09,846962547,vu1980041,hrm@1,Staff,5_3
+410,Nguyễn Thị Diệu Linh,Staff,CGNB Monitoring Office,1981-09-03,320205852,nguyen1981745,hrm@1,Staff,5_3
+407,Trần Công Toản,Staff,CGNB Monitoring Office,1988-03-14,398286810,tran1988111,hrm@1,Staff,5_3
+192,Phạm Hồng Lĩnh,Deputy Head of Division,Construction & Site Management,1978-01-24,520747320,pham1978697,hrm@1,Staff,5_3
+549,Vũ Anh Minh,Deputy Head of Division,Construction & Site Management,1974-11-11,741030867,vu1974408,hrm@1,Staff,5_3
+138,Võ Xuân Quý,Deputy Head of Division,Construction & Site Management,1979-01-01,369663004,vo1979610,hrm@1,Staff,5_3
+367,Trần Thanh Phong,Deputy Head of Division,Construction & Site Management,1971-12-15,800816301,tran1971541,hrm@1,Staff,5_3
+403,Nguyễn Văn Khoa,Driver,Construction & Site Management,1974-05-10,581657022,nguyen1974811,hrm@1,Staff,5_3
+310,Ngô Anh Sang,Head of Division,Construction & Site Management,1975-11-20,526383323,ngo1975729,hrm@1,Staff,5_3
+124,Nguyễn Lương Quang,Senior Specialist,Construction & Site Management,1965-04-10,397092666,nguyen1965510,hrm@1,Staff,5_3
+7,Trần Lê Huy,Specialist,Construction & Site Management,1985-08-28,831983699,tran1985040,hrm@1,Staff,5_3
+8,Nguyễn Thắng Lợi,Specialist,Construction & Site Management,1987-05-16,389774978,nguyen1987359,hrm@1,Staff,5_3
+307,Nguyễn Hữu Lộc,Specialist,Construction & Site Management,1983-08-28,510410670,nguyen1983278,hrm@1,Staff,5_3
+131,Trương Quang Phúc,Specialist,Construction & Site Management,1981-11-25,334057755,truong1981893,hrm@1,Staff,5_3
+365,Đinh Văn Táo,Specialist,Construction & Site Management,1984-10-28,988439630,đinh1984572,hrm@1,Staff,5_3
+527,Nguyễn Văn Thúc,Specialist,Construction & Site Management,1972-08-18,939742096,nguyen1972178,hrm@1,Staff,5_3
+144,Phan Anh Thy,Specialist,Construction & Site Management,1989-06-18,344849383,phan1989812,hrm@1,Staff,5_3
+231,Phạm Thanh Hải,Deputy Director of Department,Construction Investment Department,1977-02-26,761813640,pham1977678,hrm@1,Staff,5_3
+430,Kiều Nhật Minh,Deputy Director of Department,Construction Investment Department,1988-10-11,770794577,kieu1988498,hrm@1,Staff,5_3
+182,Đào Thị Mai Trang,Engineer,Construction Investment Department,1981-05-19,708140803,đao1981858,hrm@1,Staff,5_3
+507,Bùi Ngọc Cương,Specialist,Construction Investment Department,1978-04-17,350291645,bui1978018,hrm@1,Staff,5_3
+211,Phạm Ngọc Điệp,Specialist,Construction Investment Department,1982-02-27,570400276,pham1982339,hrm@1,Staff,5_3
+402,Trần Mỹ Hạnh,Specialist,Construction Investment Department,1987-01-01,510809552,tran1987838,hrm@1,Staff,5_3
+370,Đỗ Minh Hiếu,Specialist,Construction Investment Department,1981-12-17,824286422,đo1981760,hrm@1,Staff,5_3
+447,Võ Thị Kiều Anh,Specialist,DN-QN Monitoring Office,1983-09-15,980366638,vo1983280,hrm@1,Staff,5_5
+546,Võ Đình Mạnh,Specialist,DN-QN Monitoring Office,1990-09-16,757573388,vo1990399,hrm@1,Staff,5_5
+328,Hoàng Văn Nghị,Specialist,DN-QN Monitoring Office,1972-01-06,349308017,hoang1972224,hrm@1,Staff,5_5
+376,Lê Thiện Vũ,Specialist,Da Nang Field Office,1990-06-02,850658568,le1990542,hrm@1,Staff,5_5
+189,Nguyễn Thị Thanh Hồng,Deputy Director of Department,Finance - Accounting Department,1974-02-03,713438683,nguyen1974483,hrm@1,Staff,5_2
+156,Trần Hữu Vĩ,Deputy Director of Department,Finance - Accounting Department,1972-03-04,964956876,tran1972097,hrm@1,Staff,5_2
+71,Nguyễn Ngọc Đức,Deputy Director of Department,Finance - Accounting Department,1976-09-18,559834705,nguyen1976260,hrm@1,Staff,5_2
+134,Phạm Văn Dũng,Deputy Director of Department,Finance - Accounting Department,1984-08-17,749833091,pham1984586,hrm@1,Staff,5_2
+3,Nguyễn Tuấn Anh,Specialist,Finance - Accounting Department,1987-11-26,871554470,nguyen1987735,hrm@1,Staff,5_2
+357,Phạm Mai Chi,Specialist,Finance - Accounting Department,1991-10-19,532322631,pham1991395,hrm@1,Staff,5_2
+538,Trần Hoàng Đức,Specialist,Finance - Accounting Department,1994-09-22,583918521,tran1994877,hrm@1,Staff,5_2
+525,Nguyễn Văn Lai,Specialist,Finance - Accounting Department,1979-06-23,334149600,nguyen1979870,hrm@1,Staff,5_2
+91,Trần Thị Lệ Quyên,Specialist,Finance - Accounting Department,1982-10-12,700615005,tran1982883,hrm@1,Staff,5_2
+533,Cao Thị Lan,Specialist,Finance - Accounting Department,1987-08-07,754901935,cao1987182,hrm@1,Staff,5_2
+540,Nguyễn Thị Hải,Specialist,Finance - Accounting Department,1981-10-25,810134765,nguyen1981886,hrm@1,Staff,5_2
+46,Lưu Thanh Hằng,Specialist,Finance - Accounting Department,1980-02-17,504285252,luu1980302,hrm@1,Staff,5_2
+501,Trần Thị Huệ,Specialist,Finance - Accounting Department,1989-02-27,926147761,tran1989672,hrm@1,Staff,5_2
+502,Hoàng Thị Mỹ Linh,Specialist,Finance - Accounting Department,1995-12-26,711115008,hoang1995548,hrm@1,Staff,5_2
+539,Nguyễn Hồng Sơn,Specialist,Finance - Accounting Department,1997-10-01,784723396,nguyen1997317,hrm@1,Staff,5_2
+187,Nguyễn Thị Tâm,Specialist,Finance - Accounting Department,1987-12-05,834317760,nguyen1987755,hrm@1,Staff,5_2
+426,Ngô Thị Hương Thảo,Specialist,Finance - Accounting Department,1991-04-18,796118290,ngo1991912,hrm@1,Staff,5_2
+356,Lê Thu Trang,Specialist,Finance - Accounting Department,1991-07-20,802626429,le1991208,hrm@1,Staff,5_2
+21,Phạm Tú Uyên,Specialist,Finance - Accounting Department,1982-09-11,311532706,pham1982296,hrm@1,Staff,5_2
+324,Tô Ngọc Dương,Specialist,Finance - Accounting Department,1979-01-25,701382307,to1979716,hrm@1,Staff,5_2
+509,Nguyễn Minh Quân,Driver,HLD Monitoring Office,1989-01-17,503152538,nguyen1989583,hrm@1,Staff,5_5
+141,Đinh Xuân Vịnh,Head of Division,HLD Monitoring Office,1965-02-18,751281797,đinh1965356,hrm@1,Staff,5_5
+548,Nguyễn Thị Mỹ Tiên,Specialist,HLD Monitoring Office,1991-09-02,914264221,nguyen1991145,hrm@1,Staff,5_5
+412,Trần Xuân Sang,Specialist,HLD Monitoring Office,1982-04-26,990410193,tran1982881,hrm@1,Staff,5_5
+413,Đoàn Việt Hùng,Staff,HLD Monitoring Office,1984-09-10,706990681,đoan1984461,hrm@1,Staff,5_5
+547,Võ Tá Trung,Staff,HLD Monitoring Office,1996-06-10,804678743,vo1996696,hrm@1,Staff,5_5
+398,Nguyễn Quốc Khánh,Specialist,Ha Lam Field Office,1984-02-09,712243855,nguyen1984603,hrm@1,Staff,5_5
+392,Nguyễn Hà Thái,Specialist,Ha Lam Field Office,1966-11-24,311831998,nguyen1966766,hrm@1,Staff,5_5
+383,Nguyễn Đức Thành,Specialist,Ha Lam Field Office,1988-01-12,513331072,nguyen1988966,hrm@1,Staff,5_5
+106,Nguyễn Minh Thảo,Specialist,Ha Lam Field Office,1982-10-01,821824639,nguyen1982411,hrm@1,Staff,5_5
+521,Phùng Thùy Dung,Specialist,IT Department,1995-09-25,725423309,phung1995516,hrm@1,Staff,5_1
+532,Mai Hồng Quang,Specialist,IT Department,1997-10-23,989571710,mai1997977,hrm@1,Staff,5_1
+432,Trần Xuân Trí,Specialist,IT Department,1984-07-02,567607158,tran1984521,hrm@1,Staff,5_1
+206,Nguyễn Hoàng Hà,Specialist,IT Department,1975-05-07,313703615,nguyen1975695,hrm@1,Staff,5_1
+25,Nguyễn Đăng Tuyên,Deputy Director of Department,Internal Control Department,1970-08-01,929245214,nguyen1970504,hrm@1,Staff,5_5
+23,Nguyễn Hải Anh,Head of Internal Audit,Internal Control Department,1969-06-25,580261000,nguyen1969605,hrm@1,Staff,5_5
+446,Nguyễn Thị Hòa,Specialist,Internal Control Department,1988-09-16,354727671,nguyen1988356,hrm@1,Staff,5_5
+438,Phùng Lan Hương,Specialist,Internal Control Department,1993-08-05,842350524,phung1993383,hrm@1,Staff,5_5
+72,Nguyễn Quang Hải,Specialist,Land and Financial Management,1980-11-24,583596003,nguyen1980517,hrm@1,Staff,5_5
+524,Nguyễn Công Tân,Specialist,Land and Financial Management,1984-04-23,989216111,nguyen1984337,hrm@1,Staff,5_5
+6,Đặng Quế Võ,Specialist,Land and Financial Management,1993-06-10,727554975,đang1993773,hrm@1,Staff,5_5
+289,Tạ Đăng Thành,Specialist,Land and Financial Management,1988-06-18,502658069,ta1988151,hrm@1,Staff,5_5
+255,Đậu Khắc Tuấn,Specialist,Land and Financial Management,1977-06-20,707984955,đau1977492,hrm@1,Staff,5_5
+326,Vũ Huy Phan,Deputy Director of Department,Legal & Risk Management Department,1980-10-25,509336841,vu1980885,hrm@1,Staff,5_5
+195,Nguyễn Quang Quyết,Deputy Director of Department,Legal & Risk Management Department,1977-07-25,859876083,nguyen1977258,hrm@1,Staff,5_5
+175,Phan Xuân Bằng,Director of Department,Legal & Risk Management Department,1976-04-09,519714476,phan1976799,hrm@1,Staff,5_5
+241,Trịnh Thị Xuân Liễu,Specialist,Legal & Risk Management Department,1999-01-24,858177109,trinh1999307,hrm@1,Staff,5_5
+341,Lê Đình Châu,Specialist,Legal & Risk Management Department,1975-07-13,722346071,le1975959,hrm@1,Staff,5_5
+534,Hoàng Thị Thu Trang,Specialist,Legal & Risk Management Department,1993-01-08,788615079,hoang1993303,hrm@1,Staff,5_5
+242,Phạm Hồ Hoàng,Driver,Main Office,1985-05-24,981977944,pham1985835,hrm@1,Staff,5_5
+78,Đoàn Thanh Hải,Head of Division,Main Office,1982-10-06,503860150,đoan1982086,hrm@1,Staff,5_5
+528,Ninh Thu Hằng,Specialist,Main Office,1999-02-01,945965262,ninh1999744,hrm@1,Staff,5_5
+379,Mạc Tiến Thịnh,Specialist,Main Office,1993-05-25,860996069,mac1993932,hrm@1,Staff,5_5
+449,Nguyễn Anh Tuấn,Specialist,Main Office,1978-12-20,998606378,nguyen1978636,hrm@1,Staff,5_5
+65,Đàm Thị Lục,Deputy Director of Department,Management & Operation Department,1973-12-12,880078680,đam1973976,hrm@1,Staff,5_4
+163,Lưu Đức Thành,Deputy Director of Department,Management & Operation Department,1985-06-03,320053265,luu1985125,hrm@1,Staff,5_4
+543,Bùi Đình Tuấn,Director of Department,Management & Operation Department,1976-10-22,505060035,bui1976796,hrm@1,Staff,5_4
+5,Triệu Quốc Tuấn,Specialist,Management & Operation Department,1988-05-11,562146075,trieu1988287,hrm@1,Staff,5_4
+221,Đinh Tuấn Anh,Specialist,Management & Operation Department,1983-05-11,710027620,đinh1983223,hrm@1,Staff,5_4
+294,Nguyễn Như Bình,Specialist,Management & Operation Department,1986-10-11,999618846,nguyen1986669,hrm@1,Staff,5_4
+127,Vũ Hoàng Giang,Specialist,Management & Operation Department,1977-09-08,525334637,vu1977701,hrm@1,Staff,5_4
+542,Phạm Công Hưng,Specialist,Management & Operation Department,1995-12-18,558396996,pham1995156,hrm@1,Staff,5_4
+545,Bùi Duy Khánh,Specialist,Management & Operation Department,1988-04-23,861746144,bui1988151,hrm@1,Staff,5_4
+160,Phùng Minh Lam,Specialist,Management & Operation Department,1988-11-11,921033012,phung1988204,hrm@1,Staff,5_4
+343,Nguyễn Xuân Thiêm,Specialist,Management & Operation Department,1976-03-09,358776013,nguyen1976615,hrm@1,Staff,5_4
+371,Phạm Anh Tuấn,Specialist,Management & Operation Department,1984-11-13,356319117,pham1984007,hrm@1,Staff,5_4
+387,Đoàn Quốc Trung,Specialist,Management & Operation Department,1984-01-09,931331551,đoan1984602,hrm@1,Staff,5_4
+251,Phạm Hồng Quang,Council Member - General Director,Members' Council,1973-06-07,836901026,pham1973439,hrm@1,Staff,5_5
+252,Trần Công Hòa,Full-time Council Member,Members' Council,1975-05-15,550927460,tran1975778,hrm@1,Staff,5_5
+513,Lê Quang Vũ,Full-time Council Member,Members' Council,1984-12-21,780523566,le1984949,hrm@1,Staff,5_5
+318,Phạm Viết Hào,Driver,NBLC Monitoring Office,1974-12-11,964138478,pham1974942,hrm@1,Staff,5_3
+55,Nguyễn Ngọc Thịnh,Driver,NBLC Monitoring Office,1971-01-15,375990825,nguyen1971313,hrm@1,Staff,5_3
+107,Nguyễn Hải Đăng,Head of Division,NBLC Monitoring Office,1978-09-13,951246837,nguyen1978712,hrm@1,Staff,5_3
+423,Vũ Tiến Định,Specialist,NBLC Monitoring Office,1985-07-28,831978519,vu1985338,hrm@1,Staff,5_3
+505,Bùi Chung Hiếu,Specialist,NBLC Monitoring Office,1983-12-04,862138346,bui1983392,hrm@1,Staff,5_3
+422,Nguyễn Đắc Hưng,Specialist,NBLC Monitoring Office,1985-02-14,876596445,nguyen1985527,hrm@1,Staff,5_3
+405,Lê Phú Hưởng,Specialist,NBLC Monitoring Office,1977-03-08,868829280,le1977048,hrm@1,Staff,5_3
+420,Lại Đức Tâm,Specialist,NBLC Monitoring Office,1987-12-27,973253987,lai1987707,hrm@1,Staff,5_3
+404,Hoàng Nam Thắng,Specialist,NBLC Monitoring Office,1976-04-25,944298996,hoang1976165,hrm@1,Staff,5_3
+421,Chu Văn Tuyển,Specialist,NBLC Monitoring Office,1987-10-25,746614079,chu1987850,hrm@1,Staff,5_3
+436,Lê Anh Đức,Staff,NBLC Monitoring Office,1991-10-08,598606782,le1991348,hrm@1,Staff,5_3
+419,Uông Vương Đức Tài,Staff,NBLC Monitoring Office,1991-07-24,769399141,uong1991929,hrm@1,Staff,5_3
+20,Nguyễn Công Hưng,Chief of Office,Office,1981-11-08,397638773,nguyen1981605,hrm@1,Staff,5_4
+2,Nguyễn Quang Tuấn,Deputy Chief of Office,Office,1974-05-15,597891871,nguyen1974227,hrm@1,Staff,5_4
+210,Nguyễn Quang Lê,Deputy Chief of Office,Office,1974-12-15,880284681,nguyen1974804,hrm@1,Staff,5_4
+415,Lương Ngọc Chính,Driver,Office,1981-10-28,548681174,luong1981293,hrm@1,Staff,5_4
+259,Võ Tiến Dũng,Driver,Office,1984-10-09,337882193,vo1984291,hrm@1,Staff,5_4
+34,Lương Bá Hùng,Driver,Office,1971-07-15,798514868,luong1971189,hrm@1,Staff,5_4
+184,Nguyễn Minh Khôi,Driver,Office,1970-01-20,898718695,nguyen1970730,hrm@1,Staff,5_4
+331,Lê Hoàng Long,Driver,Office,1976-09-03,724622312,le1976546,hrm@1,Staff,5_4
+97,Nguyễn Văn Thông,Driver,Office,1976-09-09,382252694,nguyen1976177,hrm@1,Staff,5_4
+225,Nguyễn Văn Thành,Driver,Office,1982-11-22,302459611,nguyen1982011,hrm@1,Staff,5_4
+176,Võ Thúc Định,Specialist,Office,1980-09-07,847604213,vo1980941,hrm@1,Staff,5_4
+541,Lê Ngọc Hân,Specialist,Office,1992-04-11,816898899,le1992238,hrm@1,Staff,5_4
+535,Vũ Văn Kiên,Specialist,Office,1997-03-07,730932339,vu1997437,hrm@1,Staff,5_4
+327,Đào Thị Phương Lan,Specialist,Office,1982-11-17,380075657,đao1982131,hrm@1,Staff,5_4
+536,Lê Thùy Liên,Specialist,Office,1985-04-05,878962416,le1985447,hrm@1,Staff,5_4
+88,Lại Thị Nhâm,Specialist,Office,1972-08-18,590476455,lai1972490,hrm@1,Staff,5_4
+1,Đặng Thu Quỳnh,Specialist,Office,1985-12-08,898193762,đang1985167,hrm@1,Staff,5_4
+10,Đào Thị Hạnh,"Specialist, Clerk",Office,1984-10-21,588763549,đao1984655,hrm@1,Staff,5_4
+9,Cao Thị Minh Ngọc,"Specialist, VT",Office,1981-04-18,860637361,cao1981913,hrm@1,Staff,5_4
+27,Mai Đức Quỳnh,Chief of Office,Party Office,1977-07-11,341428502,m    ai1977734,hrm@1,Staff,5_5
+526,Nguyễn Ngọc Cảnh,Specialist,Party Office,1970-11-07,804688275,nguyen1970265,hrm@1,Staff,5_5
+418,Trần Công Luận,Specialist,Party Office,1985-12-24,945716686,tran1985590,hrm@1,Staff,5_5
+433,Đỗ Quốc Dân,Deputy Head of Division,Planning & Finance Department,1972-04-11,371800626,đo1972383,hrm@1,Staff,5_5
+529,Nguyễn Phạm Nghĩa,Head of Division,Planning & Finance Department,1974-04-16,797438267,nguyen1974736,hrm@1,Staff,5_5
+243,Huỳnh Thị Bích Ngọc,Head of Division,Planning & Finance Department,1970-06-27,766401946,huynh1970434,hrm@1,Staff,5_5
+515,Nguyễn Tiến Đạt,Specialist,Planning & Finance Department,1995-03-05,540680031,nguyen1995099,hrm@1,Staff,5_5
+315,Nguyễn Hoàng Yến,Specialist,Planning & Finance Department,1973-12-17,352673541,nguyen1973288,hrm@1,Staff,5_5
+266,Nguyễn Thị Yến,Treasurer,Planning & Finance Department,1986-03-09,744273050,nguyen1986104,hrm@1,Staff,5_5
+305,Đặng Ngọc Anh,Deputy Director,Research & Development Center,1981-11-25,789967480,đang1981274,hrm@1,Staff,5_5
+172,Phan Thị Thành Vinh,Deputy Director,Research & Development Center,1986-10-14,894856852,phan1986206,hrm@1,Staff,5_5
+246,Nguyễn Trọng Giáp,Engineer,Research & Development Center,1987-11-10,847428727,nguyen1987739,hrm@1,Staff,5_5
+537,Nguyễn Thu Trà,Specialist,Research & Development Center,1996-11-24,538017917,nguyen1996254,hrm@1,Staff,5_5
+287,Nguyễn Tư Điền,Specialist,Research & Development Center,1975-04-15,385654827,nguyen1975014,hrm@1,Staff,5_5
+427,Nguyễn Thị Hải Hà,Specialist,Research & Development Center,1988-03-22,579519306,nguyen1988425,hrm@1,Staff,5_5
+284,Đàm Văn Thanh,Deputy Director of Department,Tender Department,1985-01-23,841965443,đam1985547,hrm@1,Staff,5_5
+157,Nguyễn Trọng Hùng,Director of Department,Tender Department,1983-07-10,548771166,nguyen1983808,hrm@1,Staff,5_5
+164,Đoàn Thị Vân,Engineer,Tender Department,1981-05-01,368995800,đoan1981697,hrm@1,Staff,5_5
+288,Phạm Đức Hiền,Specialist,Tender Department,1980-09-09,307294575,pham1980799,hrm@1,Staff,5_5
+353,Nguyễn Thị Hiền Nương,Specialist,Tender Department,1980-03-03,758213422,nguyen1980999,hrm@1,Staff,5_5
+209,Nguyễn Thị Hương Lan,Specialist,Tender Expert Group,1982-10-21,304740554,nguyen1982262,hrm@1,Staff,5_5
+325,Trần Bích Thủy,Specialist,Tender Expert Group,1975-06-12,398947025,tran1975129,hrm@1,Staff,5_5
