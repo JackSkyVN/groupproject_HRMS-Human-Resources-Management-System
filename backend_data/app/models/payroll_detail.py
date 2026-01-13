@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class PayrollDetail(Base):
-    """
-    Bảng Payroll_Detail - Chi tiết các thành phần lương
-    Lưu từng khoản: lương cơ bản, phụ cấp, thưởng, tăng ca, khấu trừ
-    """
+    """Bảng lưu trữ chi tiết từng thành phần lương trong một bảng lương."""
     __tablename__ = "payroll_detail"
 
     detail_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -17,6 +14,6 @@ class PayrollDetail(Base):
     amount = Column(Numeric(15, 2), nullable=False)
     note = Column(Text, nullable=True)
 
-    # Relationships
+    # Quan hệ (Relationships)
     payroll = relationship("Payroll", back_populates="details")
     component = relationship("SalaryComponent", back_populates="payroll_details")

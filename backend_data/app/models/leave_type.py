@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class LeaveType(Base):
-    """
-    Bảng Leave_Type - Loại nghỉ phép
-    Ví dụ: Nghỉ phép năm, Nghỉ ốm, Nghỉ không lương
-    """
+    """Bảng định nghĩa các loại ngày nghỉ (Phep nam, Om, v.v.)."""
     __tablename__ = "leave_type"
 
     leave_type_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -17,6 +14,6 @@ class LeaveType(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
+    # Quan hệ (Relationships)
     leave_requests = relationship("LeaveRequest", back_populates="leave_type")
     leave_balances = relationship("LeaveBalance", back_populates="leave_type")

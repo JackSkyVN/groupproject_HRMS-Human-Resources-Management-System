@@ -6,12 +6,9 @@ from sqlalchemy import select
 
 @celery_app.task(name="verify_attendance_logs")
 def verify_attendance_logs():
-    """
-    Periodically checks for unverified attendance logs and verifies them.
-    """
     db = SessionLocal()
     try:
-        # Find logs that are not verified yet (verified=False)
+        # Tìm logs chưa verified
         stmt = select(Attendance).where(
             Attendance.verified == False,
             Attendance.verification_reason == None
@@ -19,8 +16,7 @@ def verify_attendance_logs():
         logs = db.execute(stmt).scalars().all()
         
         for log in logs:
-            # TODO: Integrate with AI service for snapshot matching
-            ai_match_result = True # Placeholder
+            ai_match_result = True  # Placeholder
             
             verify_log(db, log, ai_match=ai_match_result)
             db.add(log)

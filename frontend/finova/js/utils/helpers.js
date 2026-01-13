@@ -1,11 +1,36 @@
 /**
- * Helper Utilities
+ * Tiện ích Hỗ trợ
  */
+
+/**
+ * Kiểm soát Truy cập Dựa trên Role: Helper để xác định department có được quản lý bởi position HR Staff hay không
+ */
+export function isDepartmentManagedByPosition(deptName, positionName) {
+    const pos = String(positionName || '').toLowerCase();
+    const dept = String(deptName || '').toLowerCase();
+
+    if (pos.includes('hr handles it') || pos.includes('hr manages it')) {
+        return dept.includes('it department');
+    }
+    if (pos.includes('hr handles finance') || pos.includes('hr manages finance')) {
+        return dept.includes('finance') || dept.includes('internal control') || dept.includes('accounting') || dept.includes('land and financial');
+    }
+    if (pos.includes('hr handles construction') || pos.includes('hr manages construction')) {
+        return dept.includes('construction') || dept.includes('tender') || dept.includes('field office') || dept.includes('monitoring office');
+    }
+    if (pos.includes('hr handles administration') || pos.includes('hr manages administration')) {
+        return dept.includes('administration') || dept.includes('office') || dept.includes('director') || dept.includes('council') || dept.includes('legal') || dept.includes('risk') || dept.includes('appraisal');
+    }
+    if (pos.includes('hr handles support') || pos.includes('hr manages support') || pos.includes('hr manages other')) {
+        return dept.includes('research') || dept.includes('operation') || dept.includes('cgnb monitoring');
+    }
+    return false;
+}
 
 import { getState } from '../core/state.js';
 
 /**
- * Get managed employee pool based on role hierarchy
+ * Lấy nhóm nhân viên được quản lý dựa trên hệ thống phân cấp role
  */
 export function getManagedEmployeePool() {
     const appData = getState();
@@ -67,7 +92,7 @@ export function getManagedEmployeePool() {
 }
 
 /**
- * Format date
+ * Định dạng ngày
  */
 export function formatDate(date) {
     if (!date) return '-';
@@ -75,7 +100,7 @@ export function formatDate(date) {
 }
 
 /**
- * Format currency
+ * Định dạng tiền tệ
  */
 export function formatCurrency(amount) {
     if (!amount) return '$0';
@@ -83,7 +108,7 @@ export function formatCurrency(amount) {
 }
 
 /**
- * Validate form
+ * Xác thực form
  */
 export function validateForm(form) {
     const inputs = form.querySelectorAll('[required]');
@@ -97,7 +122,7 @@ export function validateForm(form) {
 }
 
 /**
- * Debounce function
+ * Hàm Debounce
  */
 export function debounce(fn, delay = 300) {
     let timeout;
@@ -107,5 +132,15 @@ export function debounce(fn, delay = 300) {
     };
 }
 
-// Make getManagedEmployeePool available globally for onclick handlers
+// Hiển thị getManagedEmployeePool global cho onclick handlers
 window.getManagedEmployeePool = getManagedEmployeePool;
+
+/**
+ * Format date from YYYY-MM-DD to DD/MM/YYYY (Vietnamese format)
+ */
+export function formatDateToDDMMYYYY(dateStr) {
+    if (!dateStr || dateStr === 'N/A') return dateStr;
+    const match = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (match) return `${match[3]}/${match[2]}/${match[1]}`;
+    return dateStr;
+}

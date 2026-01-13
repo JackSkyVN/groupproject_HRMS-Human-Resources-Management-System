@@ -1,20 +1,23 @@
 /**
- * Announcements Module - Internal Communication (Premium Design)
+ * Module Thông Báo - Truyền thông nội bộ (Thiết kế cao cấp)
  */
 
 import { getState } from '../core/state.js';
 import { API_BASE_URL } from '../core/config.js';
 import { showToast } from '../utils/toast.js';
 import { createModal } from '../utils/modal.js';
-import { deleteAnnouncement, fetchAnnouncements } from '../core/api.js';
+import { deleteAnnouncement, fetchAnnouncements, fetchTrashAnnouncements, restoreAnnouncement } from '../core/api.js';
+
+// Quản lý state cho tabs
+let currentTab = 'active'; // 'active' hoặc 'trash'
 
 export async function renderAnnouncements() {
     const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
     const appData = getState();
 
-    // Show initial skeleton if no data yet
+    // Hiển skeleton ban đầu nếu chưa có dữ liệu
     if (!appData.announcements || appData.announcements.length === 0) {
-        // Still trigger fetch in background
+        // Vẫn tiếp tục fetch ở background
         fetchAnnouncements().then(() => {
             const contentArea = document.getElementById('content-area');
             if (contentArea && window.location.hash === '#announcements') {
@@ -28,13 +31,14 @@ export async function renderAnnouncements() {
     }
 
     const announcements = appData.announcements || [];
+    const showTrashTab = roleLevel <= 2; // Chỉ L1/L2 mới thấy trash
 
     return `
-        <div class="page-header" style="margin-bottom: 32px;">
-            <h1 style="font-family: 'Outfit', sans-serif; font-weight: 800; color: #1e293b; margin: 0 0 24px 0; font-size: 2rem;">System Announcements</h1>
+        <div class="page-header" style="margin-bottom: 24px;">
+            <h1 style="font-family: 'Outfit', sans-serif; font-weight: 800; color: #1e293b; margin: 0 0 20px 0; font-size: 2rem;">System Announcements</h1>
             
-            ${roleLevel <= 2 ? `
-                <button class="btn btn-primary" onclick="window.openAddAnnouncementModal()" style="display: flex; align-items: center; gap: 8px; background: #6366f1; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); transition: all 0.3s ease; padding: 12px 24px;">
+            ${roleLevel <= 3 ? `
+                <button class="btn btn-primary" onclick="window.openAddAnnouncementModal()" style="display: inline-flex; align-items: center; gap: 8px; background: #6366f1; border: none; box-shadow: 0 4px 12px rgba(99, 102, 241, 0.2); transition: all 0.3s ease; padding: 12px 24px; margin-bottom: 24px; border-radius: 12px;">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
                         <line x1="12" y1="5" x2="12" y2="19"></line>
                         <line x1="5" y1="12" x2="19" y2="12"></line>
@@ -42,12 +46,33 @@ export async function renderAnnouncements() {
                     New Announcement
                 </button>
             ` : ''}
+            
+            <!-- Tab Navigation -->
+            <div style="display: flex; gap: 8px; border-bottom: 2px solid #f1f5f9; margin-bottom: 24px;">
+                <button id="tab-active" onclick="window.switchAnnouncementTab('active')" style="padding: 12px 24px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; background: ${currentTab === 'active' ? '#6366f1' : 'transparent'}; color: ${currentTab === 'active' ? 'white' : '#64748b'}; border: none; border-radius: 12px 12px 0 0; cursor: pointer; transition: all 0.3s ease; margin-bottom: -2px; border-bottom: ${currentTab === 'active' ? '2px solid #6366f1' : 'none'};">
+                    Active
+                </button>
+                ${showTrashTab ? `
+                    <button id="tab-trash" onclick="window.switchAnnouncementTab('trash')" style="padding: 12px 24px; font-family: 'Outfit', sans-serif; font-weight: 700; font-size: 0.95rem; background: ${currentTab === 'trash' ? '#6366f1' : 'transparent'}; color: ${currentTab === 'trash' ? 'white' : '#64748b'}; border: none; border-radius: 12px 12px 0 0; cursor: pointer; transition: all 0.3s ease; margin-bottom: -2px; border-bottom: ${currentTab === 'trash' ? '2px solid #6366f1' : 'none'};">
+                        Trash
+                    </button>
+                ` : ''}
+            </div>
         </div>
 
-        <div class="announcements-container" style="display: grid; gap: 24px; max-width: 900px;">
-            ${announcements.length === 0 ? renderEmptyState() : announcements.map(ann => renderAnnouncementCard(ann, roleLevel)).join('')}
+        <!-- Content based on tab -->
+        <div id="announcements-tab-content" class="announcements-container" style="display: grid; gap: 24px; max-width: 900px;">
+            ${currentTab === 'active' ? renderActiveTab(announcements, roleLevel) : ''}
+            ${currentTab === 'trash' && showTrashTab ? '<div class="loading">Loading trash...</div>' : ''}
         </div>
     `;
+}
+
+function renderActiveTab(announcements, roleLevel) {
+    if (announcements.length === 0) {
+        return renderEmptyState();
+    }
+    return announcements.map(ann => renderAnnouncementCard(ann, roleLevel, false)).join('');
 }
 
 function renderEmptyState() {
@@ -59,17 +84,18 @@ function renderEmptyState() {
                     <path d="M13.73 21a2 2 0 0 1-3.46 0"></path>
                 </svg>
             </div>
-            <h3 style="font-family: 'Outfit', sans-serif; color: #1e293b; margin-bottom: 8px; font-weight: 700;">No Announcements Yet</h3>
+            <h3 style="font-family: 'Outfit', sans-serif; color: #1e293b; margin-bottom: 8px; font-weight: 700;">No Announcements</h3>
         </div>
     `;
 }
 
-function renderAnnouncementCard(ann, roleLevel) {
+function renderAnnouncementCard(ann, roleLevel, isTrash = false) {
     const isBroadcast = !ann.target_type || ann.target_type === 'all';
     const typeLabel = (ann.target_type || 'all').toUpperCase();
+    const targetDetail = ann.target_detail || 'Everyone';
 
-    // Category colors and icons
-    let color = '#3b82f6'; // Default blue
+    // Màu và icon theo category
+    let color = '#3b82f6'; // Mặc định blue
     let icon = `
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
             <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path>
@@ -106,7 +132,7 @@ function renderAnnouncementCard(ann, roleLevel) {
     });
 
     return `
-        <div class="card" style="border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.03); overflow: hidden; transition: transform 0.2s ease;">
+        <div class="card" style="border-radius: 20px; border: 1px solid #f1f5f9; box-shadow: 0 10px 30px rgba(0,0,0,0.03); overflow: hidden; transition: transform 0.2s ease; ${isTrash ? 'opacity: 0.7;' : ''}">
             <div style="display: flex; gap: 20px; padding: 24px;">
                 <div style="flex-shrink: 0; width: 56px; height: 56px; background: ${color}10; color: ${color}; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
                     ${icon}
@@ -120,23 +146,44 @@ function renderAnnouncementCard(ann, roleLevel) {
                             </div>
                             <h2 style="font-family: 'Outfit', sans-serif; font-weight: 700; color: #1e293b; margin: 0; font-size: 1.25rem;">${ann.title}</h2>
                         </div>
-                        <div style="display: flex; gap: 4px;">
-                            ${roleLevel <= 2 ? `
-                                <button onclick="window.confirmDeleteAnnouncement(${ann.notification_id})" title="Xóa vĩnh viễn" style="background: none; border: none; color: #cbd5e1; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.color='#cbd5e1'; this.style.background='none'">
-                                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                        <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                                    </svg>
+                        ${!isTrash ? `
+                            <div style="display: flex; gap: 4px;">
+                                ${roleLevel <= 2 ? `
+                                    <button onclick="window.confirmDeleteAnnouncement(${ann.notification_id})" title="Delete forever" style="background: none; border: none; color: #cbd5e1; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.color='#ef4444'; this.style.background='#fef2f2'" onmouseout="this.style.color='#cbd5e1'; this.style.background='none'">
+                                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                            <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                                        </svg>
+                                    </button>
+                                ` : ''}
+                            </div>
+                        ` : `
+                            <div style="display: flex; gap: 8px;">
+                                <button onclick="window.restoreAnnouncementFromTrash(${ann.notification_id})" style="background: #10b981; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                                    Restore
                                 </button>
-                            ` : ''}
-                            <button onclick="window.dismissNotif(${ann.notification_id})" title="Ẩn với tôi" style="background: none; border: none; color: #cbd5e1; cursor: pointer; padding: 8px; border-radius: 8px; transition: all 0.2s;" onmouseover="this.style.color='#f59e0b'; this.style.background='#fffbeb'" onmouseout="this.style.color='#cbd5e1'; this.style.background='none'">
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
-                                    <line x1="18" y1="6" x2="6" y2="18"></line>
-                                    <line x1="6" y1="6" x2="18" y2="18"></line>
-                                </svg>
-                            </button>
-                        </div>
+                                <button onclick="window.confirmDeleteAnnouncement(${ann.notification_id})" style="background: #ef4444; color: white; border: none; padding: 8px 16px; border-radius: 8px; font-size: 0.85rem; font-weight: 600; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                                    Delete Forever
+                                </button>
+                            </div>
+                        `}
                     </div>
                     <div style="color: #475569; line-height: 1.7; font-size: 1rem; white-space: pre-wrap; margin-bottom: 16px;">${ann.message}</div>
+                    
+                    <!-- Recipient Info -->
+                    <div style="background: ${color}08; border-left: 3px solid ${color}; padding: 10px 14px; border-radius: 8px; margin-bottom: 16px;">
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="${color}" stroke-width="2">
+                                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                                <circle cx="9" cy="7" r="4"></circle>
+                                <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                                <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                            </svg>
+                            <span style="font-size: 0.85rem; color: #475569;">
+                                Sent to: <strong style="color: ${color};">${targetDetail}</strong>
+                            </span>
+                        </div>
+                    </div>
+                    
                     <div style="display: flex; align-items: center; gap: 10px; padding-top: 16px; border-top: 1px solid #f1f5f9;">
                         <div style="width: 32px; height: 32px; background: #6366f1; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.75rem;">
                             ${ann.sender_name.charAt(0)}
@@ -159,14 +206,13 @@ window.openAddAnnouncementModal = function () {
             <div style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
                 <div class="filter-group" style="margin-bottom: 20px;">
                     <label class="filter-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                        Announcement Title
+                        title
                     </label>
                     <input type="text" id="ann-title" class="pro-input" placeholder="e.g. Important Update on Office Policy" style="width: 100%;" required>
                 </div>
                 
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
                     <div class="filter-group">
-                        <label class="filter-label" style="margin-bottom: 8px;">Target Audience</label>
                         <select id="ann-target-type" class="pro-input" onchange="window.handleAnnTargetChange()" style="width: 100%;">
                             <option value="all">Everyone</option>
                             <option value="department">Specific Department</option>
@@ -182,7 +228,7 @@ window.openAddAnnouncementModal = function () {
 
             <div class="filter-group">
                 <label class="filter-label" style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
-                     Message Content
+                     Content
                 </label>
                 <textarea id="ann-message" class="pro-input" style="height: 180px; resize: none; width: 100%; line-height: 1.6; padding: 15px;" placeholder="Write your announcement content here..." required></textarea>
             </div>
@@ -190,7 +236,7 @@ window.openAddAnnouncementModal = function () {
     `;
 
     createModal({
-        title: "Create New Announcement",
+        title: "New Announcement",
         content: content,
         submitText: "Post Announcement",
         onSubmit: async () => {
@@ -220,7 +266,7 @@ window.openAddAnnouncementModal = function () {
                 });
 
                 if (response.ok) {
-                    showToast("Announcement published! 🚀", "success");
+                    showToast("Announcement published", "success");
                     await fetchAnnouncements();
                     if (window.updateNotificationUI) window.updateNotificationUI();
                     const contentArea = document.getElementById('content-area');
@@ -256,7 +302,7 @@ window.handleAnnTargetChange = function () {
         } else if (type === 'role') {
             label.textContent = 'Select Position';
             (appData.roles_raw || []).forEach(r => {
-                idSelect.innerHTML += `<option value="${r.id}">${r.name} (Level ${r.level})</option>`;
+                idSelect.innerHTML += `<option value="${r.id}">${r.name}</option>`;
             });
         }
     }
@@ -290,3 +336,73 @@ window.confirmDeleteAnnouncement = function (id) {
         }
     });
 };
+
+// Hàm chuyển tab
+window.switchAnnouncementTab = async function (tab) {
+    currentTab = tab;
+    const contentArea = document.getElementById('announcements-tab-content');
+    const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
+    const appData = getState();
+
+    if (tab === 'active') {
+        const announcements = appData.announcements || [];
+        contentArea.innerHTML = renderActiveTab(announcements, roleLevel);
+    } else if (tab === 'trash') {
+        contentArea.innerHTML = '<div class="loading" style="text-align: center; padding: 40px; color: #94a3b8;">Loading trash...</div>';
+
+        try {
+            const trashData = await fetchTrashAnnouncements();
+            if (trashData.length === 0) {
+                contentArea.innerHTML = `
+                    <div style="text-align: center; padding: 80px 40px; background: white; border-radius: 24px; border: 2px dashed #e2e8f0;">
+                        <div style="width: 80px; height: 80px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 24px;">
+                            <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="1.5">
+                                <path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+                            </svg>
+                        </div>
+                        <h3 style="font-family: 'Outfit', sans-serif; color: #1e293b; margin-bottom: 8px; font-weight: 700;">Trash is Empty</h3>
+                        <p style="color: #94a3b8; font-size: 0.9rem;">Dismissed announcements will appear here.</p>
+                    </div>
+                `;
+            } else {
+                contentArea.innerHTML = trashData.map(ann => renderAnnouncementCard(ann, roleLevel, true)).join('');
+            }
+        } catch (e) {
+            showToast('Failed to load trash: ' + e.message, 'error');
+            contentArea.innerHTML = '<div style="text-align: center; padding: 40px; color: #ef4444;">Failed to load trash</div>';
+        }
+    }
+
+    // Cập nhật style các nút tab
+    document.getElementById('tab-active').style.background = currentTab === 'active' ? '#6366f1' : 'transparent';
+    document.getElementById('tab-active').style.color = currentTab === 'active' ? 'white' : '#64748b';
+    document.getElementById('tab-active').style.borderBottom = currentTab === 'active' ? '2px solid #6366f1' : 'none';
+
+    const trashTab = document.getElementById('tab-trash');
+    if (trashTab) {
+        trashTab.style.background = currentTab === 'trash' ? '#6366f1' : 'transparent';
+        trashTab.style.color = currentTab === 'trash' ? 'white' : '#64748b';
+        trashTab.style.borderBottom = currentTab === 'trash' ? '2px solid #6366f1' : 'none';
+    }
+};
+
+// Khôi phục thông báo từ trash
+window.restoreAnnouncementFromTrash = async function (id) {
+    try {
+        await restoreAnnouncement(id);
+        showToast('Announcement restored', 'success');
+        await fetchAnnouncements(); // Làm mới active announcements
+        if (window.updateNotificationUI) window.updateNotificationUI(); // Cập nhật bell
+        await window.switchAnnouncementTab('trash'); // Làm mới trash view
+    } catch (e) {
+        showToast(e.message, 'error');
+    }
+};
+
+// Dọn dẹp notification từ bell (chỉ localStorage - tạm thời backward compat)
+window.localDismissAnnouncement = function (id) {
+    // Không còn dùng nữa vì dismiss được xử lý qua bell dropdown
+    // Nhưng giữ lại để tương thích ngược
+    showToast('Please use the bell icon to dismiss notifications', 'info');
+};
+

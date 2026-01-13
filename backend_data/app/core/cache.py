@@ -1,11 +1,9 @@
-"""Redis caching utilities for performance optimization."""
 import json
 from typing import Any, Optional
 import redis
 from app.core.config import settings
 
-# Client Redis với cơ chế pooling kết nối
-
+# Khởi tạo kết nối Redis
 redis_client = redis.from_url(
     settings.redis_url,
     decode_responses=True,
@@ -16,12 +14,11 @@ redis_client = redis.from_url(
 
 
 def get_cache_key(prefix: str, key: str) -> str:
-    """Generate cache key with prefix."""
+    """Tạo cache key có tiền tố hrms."""
     return f"hrms:{prefix}:{key}"
 
-
 def cache_get(key: str) -> Optional[Any]:
-    """Get value from cache."""
+    """Lấy dữ liệu từ cache."""
     try:
         value = redis_client.get(key)
         if value:
@@ -30,9 +27,8 @@ def cache_get(key: str) -> Optional[Any]:
         return None
     return None
 
-
 def cache_set(key: str, value: Any, expire: int = 300) -> bool:
-    """Set value in cache with expiration (default 5 minutes)."""
+    """Lưu dữ liệu vào cache với thời gian hết hạn (mặc định 300s)."""
     try:
         redis_client.setex(
             key,
@@ -43,18 +39,16 @@ def cache_set(key: str, value: Any, expire: int = 300) -> bool:
     except Exception:
         return False
 
-
 def cache_delete(key: str) -> bool:
-    """Delete key from cache."""
+    """Xóa một key khỏi cache."""
     try:
         redis_client.delete(key)
         return True
     except Exception:
         return False
 
-
 def cache_delete_pattern(pattern: str) -> int:
-    """Delete all keys matching pattern."""
+    """Xóa các key khớp với pattern (ví dụ: hrms:*)."""
     try:
         keys = redis_client.keys(pattern)
         if keys:

@@ -16,10 +16,10 @@ IMG_SAVE_DIR = "data/employees"
 AVATAR_NAME = "avatar.jpg"
 
 # === Capture Configuration ===
-CAPTURE_DURATION = 18
+CAPTURE_DURATION = 30        # Increased to 30s for professional enrollment
 CAPTURE_INTERVAL = 0.4
-MAX_SAMPLES = 30
-STAGE_DURATION = 6
+MAX_SAMPLES = 50             # Increased samples for higher precision
+STAGE_DURATION = 10          # 10s per stage (Neutral, Left, Right)
 
 
 def load_csv():

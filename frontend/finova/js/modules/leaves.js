@@ -1,11 +1,13 @@
 /**
- * Leaves Module - Leave Request Management
+ * Module Nghỉ Phép - Quản lý Yêu cầu Nghỉ Phép
  */
 
 import { getState } from '../core/state.js';
 import { API_BASE_URL } from '../core/config.js';
 import { showToast } from '../utils/toast.js';
 import { closeModal } from '../utils/modal.js';
+import { isDepartmentManagedByPosition } from '../utils/helpers.js';
+import { showConfirmDialog } from '../utils/dialogs.js';
 
 export function renderLeave() {
     return `
@@ -65,8 +67,19 @@ function renderLeaveRows(statusFilter = 'all') {
     }
 
     const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
+    const currentPosition = localStorage.getItem('position_name') || '';
+    const currentUserId = Number(localStorage.getItem('employee_id') || 0);
 
-    let filtered = appData.leaveRequests || [];
+    let filtered = (appData.leaveRequests || []);
+
+    // Lọc theo Role cho Level 3
+    if (roleLevel === 3) {
+        filtered = filtered.filter(l => {
+            // HR Staff thấy yêu cầu của chính họ HOẶC yêu cầu từ nhóm department họ quản lý
+            if (Number(l.employeeId) === currentUserId) return true;
+            return isDepartmentManagedByPosition(l.employeeDeptName, currentPosition);
+        });
+    }
 
     if (statusFilter !== 'all') {
         filtered = filtered.filter(l => l.status === statusFilter);
@@ -85,18 +98,24 @@ function renderLeaveRows(statusFilter = 'all') {
     return filtered.map(leave => {
         let buttons = `<button class="btn btn-small btn-secondary" onclick="viewLeave(${leave.id})">View</button>`;
 
-        // Universal Approval Check: Higher level can approve for lower level
+        // Kiểm tra Phê duyệt Tổng quát: Level cao hơn có thể phê duyệt cho level thấp hơn
+        // HOẶC Level 1 & Level 2 có thể phê duyệt cho nhau (nhưng KHÔNG tự phê duyệt)
         let canApprove = false;
         if (leave.status === 'pending' && leave.employeeId !== appData.currentUser?.id) {
-            if (roleLevel < leave.employeeRoleLevel) {
+            const targetLevel = leave.employeeRoleLevel;
+
+            // 1. Phê duyệt Phân cấp Chuẩn
+            if (roleLevel < targetLevel) {
                 if (roleLevel === 3) {
-                    // L3 only for their dept
-                    const myDeptId = parseInt(localStorage.getItem('department_id') || '0');
-                    if (leave.employeeDeptId === myDeptId) canApprove = true;
+                    const currentPosition = localStorage.getItem('position_name') || '';
+                    if (isDepartmentManagedByPosition(leave.employeeDeptName, currentPosition)) canApprove = true;
                 } else {
-                    // L1, L2 manage all lower levels
                     canApprove = true;
                 }
+            }
+            // 2. Phê duyệt Chéo cho L1 & L2
+            else if (roleLevel <= 2 && targetLevel <= 2) {
+                canApprove = true;
             }
         }
 
@@ -107,13 +126,27 @@ function renderLeaveRows(statusFilter = 'all') {
             `;
         }
 
+        // Logic XÓA VĨNH VIỄN:
+        // 1. L1/L2 có thể xóa BẤT KỲ yêu cầu
+        // 2. Chủ sở hữu có thể xóa nếu vẫn PENDING
+        let canDelete = false;
+        if (roleLevel <= 2) {
+            canDelete = true;
+        } else if (leave.employeeId === appData.currentUser?.id && leave.status === 'pending') {
+            canDelete = true;
+        }
+
+        if (canDelete) {
+            buttons += `<button class="btn btn-small btn-danger" onclick="deleteLeave(${leave.id})">Delete</button>`;
+        }
+
         const badgeClass = leave.status === 'approved' ? 'success' : leave.status === 'pending' ? 'warning' : 'danger';
         const statusText = statusMap[leave.status] || leave.status;
         const typeText = formatLeaveType(leave.type);
 
         return `
         <tr>
-            <td><strong>${leave.employeeName}</strong></td>
+            <td><strong>${leave.employeeName || '-'}</strong></td>
             <td>${typeText}</td>
             <td>${leave.startDate}</td>
             <td>${leave.endDate}</td>
@@ -129,7 +162,7 @@ function renderLeaveRows(statusFilter = 'all') {
     `}).join('');
 }
 
-// Global functions
+// Hàm global
 window.filterLeaveRequests = function () {
     const statusFilter = document.getElementById('leave-status-filter').value;
     const tbody = document.getElementById('leave-table-body');
@@ -207,19 +240,19 @@ window.handleAddLeave = async function (event) {
         });
 
         if (response.ok) {
-            showToast("Leave request submitted successfully!", 'success');
+            showToast("Leave submitted", 'success');
             closeModal();
-            import('../core/api.js').then(m => m.fetchDashboardData().then(() => {
-                const content = document.getElementById('content-area');
-                if (content) content.innerHTML = renderLeave();
-            }));
+            const { fetchLeaves } = await import('../core/api.js');
+            await fetchLeaves();
+            const content = document.getElementById('content-area');
+            if (content) content.innerHTML = renderLeave();
         } else {
             const err = await response.json();
             showToast("Error: " + (err.detail || "Could not submit"), "error");
         }
     } catch (e) {
-        console.error(e);
-        showToast("Server connection error", "error");
+        console.error("[Leaves] Submission failed:", e);
+        showToast("Server connection error: " + e.message, "error");
     }
 };
 
@@ -246,12 +279,12 @@ window.viewLeave = async function (id) {
             .leave-reason { background: #f8fafc; padding: 15px; border-radius: 8px; border-left: 4px solid #3b82f6; margin-top: 15px; }
         </style>
         <div class="leave-detail">
-            <div class="leave-row"> <span class="leave-label">Requester:</span> <span class="leave-value">${leave.employeeName}</span> </div>
+            <div class="leave-row"> <span class="leave-label">Requester:</span> <span class="leave-value">${leave.employeeName || '-'}</span> </div>
             <div class="leave-row"> <span class="leave-label">Type:</span> <span class="leave-value">${formatLeaveType(leave.type)}</span> </div>
             <div class="leave-row"> <span class="leave-label">Duration:</span> <span class="leave-value">${new Date(leave.startDate).toLocaleDateString()} to ${new Date(leave.endDate).toLocaleDateString()}</span> </div>
-            <div class="leave-row"> <span class="leave-label">Total Days:</span> <span class="leave-value">${leave.days} day(s)</span> </div>
-            <div class="leave-row"> <span class="leave-label">Status:</span> <span class="leave-value"><span class="badge badge-${leave.status === 'approved' ? 'success' : leave.status === 'pending' ? 'warning' : 'danger'}">${leave.status.toUpperCase()}</span></span> </div>
-            ${leave.approverName ? `<div class="leave-row"> <span class="leave-label">Approver:</span> <span class="leave-value">${leave.approverName}</span> </div>` : ''}
+            <div class="leave-row"> <span class="leave-label">Total Days:</span> <span class="leave-value">${leave.days || '0'} day(s)</span> </div>
+            <div class="leave-row"> <span class="leave-label">Status:</span> <span class="leave-value"><span class="badge badge-${leave.status === 'approved' ? 'success' : leave.status === 'pending' ? 'warning' : 'danger'}">${(leave.status || 'pending').toUpperCase()}</span></span> </div>
+            ${leave.approverName ? `<div class="leave-row"> <span class="leave-label">Approver:</span> <span class="leave-value">${leave.approverName}</span> </div>` : `<div class="leave-row"> <span class="leave-label">Approver:</span> <span class="leave-value">-</span> </div>`}
             
             <div class="leave-reason">
                 <div style="font-size: 0.85rem; color: #64748b; margin-bottom: 5px; font-weight: 600;">REASON FOR LEAVE:</div>
@@ -280,11 +313,11 @@ async function updateLeaveStatus(id, newStatus) {
             body: JSON.stringify({ status: newStatus })
         });
         if (res.ok) {
-            showToast(`Leave request ${newStatus === 'approved' ? 'approved' : 'rejected'}`, 'success');
-            import('../core/api.js').then(m => m.fetchDashboardData().then(() => {
-                const content = document.getElementById('content-area');
-                if (content) content.innerHTML = renderLeave();
-            }));
+            showToast(`Leave ${newStatus === 'approved' ? 'approved' : 'rejected'}`, 'success');
+            const { fetchLeaves } = await import('../core/api.js');
+            await fetchLeaves();
+            const content = document.getElementById('content-area');
+            if (content) content.innerHTML = renderLeave();
         } else {
             const err = await res.json();
             showToast("Error: " + (err.detail || "Permission denied"), 'error');
@@ -305,3 +338,33 @@ function formatLeaveType(type) {
     };
     return map[type] || type.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
 }
+
+window.deleteLeave = async function (id) {
+    showConfirmDialog("Delete this leave request?", async () => {
+
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_BASE_URL}/api/v1/leaves/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            if (res.ok) {
+                showToast("Leave deleted permanently", 'success');
+                // Làm mới UI
+                const { fetchLeaves } = await import('../core/api.js');
+                await fetchLeaves();
+                const content = document.getElementById('content-area');
+                if (content) content.innerHTML = renderLeave();
+            } else {
+                const err = await res.json();
+                showToast("Error: " + (err.detail || "Could not delete"), 'error');
+            }
+        } catch (e) {
+            console.error("[Leaves] Delete failed:", e);
+            showToast("Connection error: " + e.message, 'error');
+        }
+    });
+};

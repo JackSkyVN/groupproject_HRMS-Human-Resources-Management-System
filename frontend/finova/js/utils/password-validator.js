@@ -1,12 +1,8 @@
-/**
- * Password Validator Utility
- * Validates password strength and provides real-time feedback
- */
 
 /**
- * Check if password meets all requirements
- * @param {string} password - Password to validate
- * @returns {Object} - Object with validation results
+
+ * @param {string} password 
+ * @returns {Object} 
  */
 export function validatePassword(password) {
     if (!password) {
@@ -29,7 +25,6 @@ export function validatePassword(password) {
 
     const valid = minLength && hasUpper && hasLower && hasNumber && hasSpecial;
 
-    // Calculate strength (0-5)
     let strength = 0;
     if (minLength) strength++;
     if (hasUpper) strength++;
@@ -49,27 +44,26 @@ export function validatePassword(password) {
 }
 
 /**
- * Get password strength label and color
- * @param {number} strength - Strength score (0-5)
- * @returns {Object} - Object with label and color
+
+ * @param {number} strength 
+ * @returns {Object}
  */
 export function getStrengthInfo(strength) {
     const levels = [
-        { label: 'Very Weak', color: '#ef4444' },      // red
-        { label: 'Weak', color: '#f97316' },           // orange
-        { label: 'Fair', color: '#f59e0b' },           // amber
-        { label: 'Good', color: '#84cc16' },           // lime
-        { label: 'Strong', color: '#22c55e' },         // green
-        { label: 'Very Strong', color: '#10b981' }     // emerald
+        { label: 'Very Weak', color: '#ef4444' },
+        { label: 'Weak', color: '#f97316' },
+        { label: 'Fair', color: '#f59e0b' },
+        { label: 'Good', color: '#84cc16' },
+        { label: 'Strong', color: '#22c55e' },
+        { label: 'Very Strong', color: '#10b981' }
     ];
 
     return levels[strength] || levels[0];
 }
 
 /**
- * Render password strength indicator
- * @param {number} strength - Strength score (0-5)
- * @returns {string} - HTML string for strength indicator
+ * @param {number} strength
+ * @returns {string}
  */
 export function renderStrengthIndicator(strength) {
     const info = getStrengthInfo(strength);
@@ -89,9 +83,9 @@ export function renderStrengthIndicator(strength) {
 }
 
 /**
- * Render password requirements checklist
- * @param {Object} validation - Validation result from validatePassword
- * @returns {string} - HTML string for requirements checklist
+ 
+ * @param {Object} validation 
+ * @returns {string} 
  */
 export function renderRequirements(validation) {
     const requirements = [

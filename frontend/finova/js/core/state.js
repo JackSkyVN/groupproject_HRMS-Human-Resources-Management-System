@@ -1,21 +1,21 @@
 /**
- * State Management - Central app state
+ * Quản lý State - Trạng thái ứng dụng tập trung
  */
 
-// Global app state
+// Dữ liệu app toàn cục
 const appData = {
-    // Current user
+    // User hiện tại
     currentUser: null,
 
-    // Core data
+    // Dữ liệu cơ bản
     employees: [],
     departments: [],
     positions: [],
 
-    // Leave requests
+    // Đơn nghỉ phép
     leaveRequests: [],
 
-    // Attendance
+    // Chấm công
     attendance: [],
     attendanceStats: [],
     attendanceDate: new Date().toISOString().split('T')[0],
@@ -38,18 +38,18 @@ const appData = {
     performanceViewType: 'my', // 'my' or 'team'
     performanceReviewCycle: 'Q4 2024',
 
-    // Salary/Payroll
+    // Lương/Bảng lương
     salaries: [],
     salaryRequests: [],
 
-    // Announcements
+    // Thông báo
     announcements: [],
 
     // Meta state
     isInitialLoading: false
 };
 
-// UI state
+// Trạng thái UI
 let currentPage = 'dashboard';
 let nextId = {
     employees: 6,
@@ -58,53 +58,53 @@ let nextId = {
     performance: 5
 };
 
-// Pagination state
+// Trạng thái phân trang
 let currentEmployeePage = 1;
 
 /**
- * Get entire app state
+ * Lấy toàn bộ app state
  */
 export function getState() {
     return appData;
 }
 
 /**
- * Get specific state property
+ * Lấy một thuộc tính cụ thể của state
  */
 export function get(key) {
     return appData[key];
 }
 
 /**
- * Set specific state property
+ * Thiết lập một thuộc tính cụ thể của state
  */
 export function set(key, value) {
     appData[key] = value;
 }
 
 /**
- * Update multiple state properties
+ * Cập nhật nhiều thuộc tính state
  */
 export function update(obj) {
     Object.assign(appData, obj);
 }
 
 /**
- * Get current page
+ * Lấy trang hiện tại
  */
 export function getCurrentPage() {
     return currentPage;
 }
 
 /**
- * Set current page
+ * Thiết lập trang hiện tại
  */
 export function setCurrentPage(page) {
     currentPage = page;
 }
 
 /**
- * Get pagination state
+ * Lấy trạng thái phân trang
  */
 export function getPagination() {
     return {
@@ -114,21 +114,21 @@ export function getPagination() {
 }
 
 /**
- * Set pagination
+ * Thiết lập phân trang
  */
 export function setEmployeePage(page) {
     currentEmployeePage = page;
 }
 
 /**
- * Initialize state (called on app load)
+ * Khởi tạo state (gọi khi app load)
  */
 export function initState() {
     console.log('[State] Initialized');
 }
 
 /**
- * Reset state (for logout)
+ * Reset state (dùng khi logout)
  */
 export function resetState() {
     Object.keys(appData).forEach(key => {

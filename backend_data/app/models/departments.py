@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class Department(Base):
-    """
-    Bảng Departments - Phòng ban
-    Mỗi phòng ban có 1 HR manager quản lý
-    """
+    """Bảng thông tin các phòng ban."""
     __tablename__ = "departments"
 
     department_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -17,7 +14,7 @@ class Department(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
+    # Quan hệ (Relationships)
     employees = relationship("Employee", back_populates="department", foreign_keys="[Employee.department_id]")
     positions = relationship("Position", back_populates="department")
     hr_manager = relationship("Employee", foreign_keys=[hr_manager_id], post_update=True)

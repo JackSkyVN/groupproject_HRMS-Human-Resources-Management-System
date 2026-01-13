@@ -1,7 +1,7 @@
 from celery import Celery
 from app.core.config import settings
 
-# Include task modules so the worker registers them on startup
+# Include task modules để worker đăng ký chúng khi khởi động
 celery_app = Celery(
     "hrms",
     broker=settings.redis_url,
@@ -10,7 +10,7 @@ celery_app = Celery(
         "app.tasks.backup",
         "app.tasks.email",
         "app.tasks.security",
-        # Load beat schedule configuration
+        # Tải beat schedule
         "app.tasks.beat",
     ],
 )

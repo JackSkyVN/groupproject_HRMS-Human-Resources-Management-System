@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class NotificationRecipient(Base):
-    """
-    Bảng Notification_Recipient - Người nhận thông báo
-    Theo dõi trạng thái đã đọc/chưa đọc
-    """
+    """Bảng lưu trữ thông tin người nhận thông báo và trạng thái đã đọc."""
     __tablename__ = "notification_recipient"
 
     recipient_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -18,12 +15,12 @@ class NotificationRecipient(Base):
     is_hidden = Column(Boolean, default=False, nullable=False, index=True)
     read_at = Column(DateTime, nullable=True)
 
-    # Composite index for faster queries
+    # Index tổ hợp cho truy vấn nhanh hơn
     __table_args__ = (
         Index('idx_recipient_notif_emp', 'notification_id', 'employee_id'),
         Index('idx_recipient_emp_unread', 'employee_id', 'is_read'),
     )
 
-    # Relationships
+    # Quan hệ (Relationships)
     notification = relationship("Notification", back_populates="recipients")
     employee = relationship("Employee", back_populates="received_notifications")

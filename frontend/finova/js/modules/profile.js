@@ -1,5 +1,5 @@
 /**
- * Profile Module
+ * Module Profile
  */
 
 import { getState } from '../core/state.js';
@@ -75,5 +75,5 @@ export function openMyProfile() {
     }
 }
 
-// Make viewEmployee global for onclick
+// Hiển thị viewEmployee global cho onclick
 window.viewEmployee = viewEmployee;

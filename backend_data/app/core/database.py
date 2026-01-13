@@ -1,4 +1,3 @@
-"""Quản lý kết nối và phiên làm việc cơ sở dữ liệu với các tối ưu hóa hiệu suất."""
 from sqlalchemy import create_engine, event
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -26,16 +25,15 @@ engine = create_engine(
     }
 )
 
-# Tạo lớp SessionLocal
+# Khởi tạo SessionLocal
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Lớp cơ sở cho các model
+# Lớp cơ sở (Base) cho các model
 Base = declarative_base()
 
 
-# Dependency để lấy phiên làm việc DB
+# Dependency để lấy DB session cho các API route
 def get_db():
-    """Lấy phiên làm việc DB với tự động dọn dẹp."""
     db = SessionLocal()
     try:
         yield db

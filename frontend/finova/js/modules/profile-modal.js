@@ -1,117 +1,150 @@
 /**
- * Open My Profile Modal with tabs for Profile Info and Change Password
- * Located at end of navigation.js file
+ * Modal My Profile Đã Được Cải Tiến - DESIGN MATCH v3
+ * Khớp với hình tham khảo: Dark Slate Header, Pill Tabs, "Cancel/Close" Footer.
  */
 
-window.openMyProfileModal = async function () {
-    const { getState } = await import('../core/state.js');
-    const { updateMyProfile, changeMyPassword, fetchDashboardData } = await import('../core/api.js');
-    const { createModal } = await import('../utils/modal.js');
-    const { showToast } = await import('../utils/toast.js');
-    const { validatePassword, renderStrengthIndicator, renderRequirements } = await import('../utils/password-validator.js');
+let enrollStream = null;
+let isEnrolling = false;
 
+window.openMyProfileModal = async function (initialTab = 'information') {
+    const { getState } = await import('../core/state.js');
+    const { fetchProfile } = await import('../core/api.js');
+    const { createModal } = await import('../utils/modal.js');
+
+    // QUAN TRỌNG: Đóng BẤT KỲ modal overlays hiện tại để tránh vấn đề double-modal
+    document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
+
+    // Đảm bảo profile cập nhật
+    await fetchProfile();
     const appData = getState();
     const user = appData.currentUser || {};
-    const employee_id = localStorage.getItem('employee_id') || 'N/A';
-    const role_name = localStorage.getItem('role_name') || 'N/A';
+
+    // Ánh xạ URL cho Deep Links (Dùng Information số ít)
+    const urlMap = {
+        'information': '/finova/profiles/informations',
+        'change-password': '/finova/profiles/change-password',
+        'face-id': '/finova/profiles/face-id'
+    };
+
+    // Chuẩn hóa initial tab
+    let currentTab = initialTab === 'informations' ? 'information' : (initialTab || 'information');
+
+    // Đồng bộ URL ban đầu
+    const prefix = window.getRolePrefix ? window.getRolePrefix() : '';
+    const basePath = window.location.pathname.startsWith('/finova') ? '/finova' : '';
+    const initialTargetPath = (currentTab === 'face-id' ? 'myprofile/registration' : (currentTab === 'change-password' ? 'myprofile/password-change' : 'myprofile/information'));
+    const initialUrl = `${basePath}/${prefix}${initialTargetPath}`.replace(/\/+/g, '/');
+    window.history.pushState({}, '', initialUrl);
 
     const content = `
-        <div id="profile-modal-container">
-            <!-- Header -->
-            <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; margin-bottom: 24px;">
-                <div style="width: 80px; height: 80px; background: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 16px; color: #667eea; font-weight: 800; font-size: 2rem; box-shadow: 0 4px 15px rgba(0,0,0,0.2);">
+        <div id="profile-modal-container" style="font-family: inherit;">
+            <style>
+                .profile-pill-tab.active { background: white !important; color: #1e293b !important; box-shadow: 0 2px 10px rgba(0,0,0,0.08); }
+                .profile-tab-content-area { animation: profileFadeIn 0.3s ease-out; }
+                @keyframes profileFadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+                .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 8px; }
+                .info-field { display: flex; flex-direction: column; gap: 4px; }
+                .info-field label { font-size: 13px; font-weight: 600; color: #64748b; }
+                .info-field input { padding: 8px 12px; border: 1.5px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #fff; color: #1e293b; transition: border-color 0.2s; }
+                .info-field input[readonly] { background: #f8fafc; color: #94a3b8; border-color: #f1f5f9; cursor: not-allowed; }
+            </style>
+
+            <!-- Header Tối Bo Tròn -->
+            <div style="background: #1e293b; padding: 32px 24px; border-radius: 12px; text-align: center; margin-bottom: 24px;">
+                <div style="width: 80px; height: 80px; background: #3b82f6; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; color: white; font-weight: 700; font-size: 2rem;">
                     ${(user.full_name || 'U').charAt(0)}
                 </div>
-                <h2 style="color: white; margin: 0 0 4px 0; font-weight: 700;">${user.full_name || 'Unknown User'}</h2>
-                <p style="color: rgba(255,255,255,0.9); margin: 0; font-size: 0.9rem;">${role_name}</p>
+                <h2 style="color: white; margin: 0 0 4px 0; font-weight: 700; font-size: 1.4rem;">${user.full_name || 'System Admin'}</h2>
+                <p style="color: #94a3b8; margin: 0; font-size: 0.9rem;">${user.position_name || 'N/A'} • ${user.department_name || 'N/A'}</p>
             </div>
             
-            <!-- Tabs -->
-            <div style="display: flex; gap: 8px; margin-bottom: 24px; border-bottom: 2px solid #e2e8f0; padding-bottom: 4px;">
-                <button id="tab-profile" class="profile-tab active" onclick="window.switchProfileTab('profile')">Profile Info</button>
-                <button id="tab-password" class="profile-tab" onclick="window.switchProfileTab('password')">Change Password</button>
+            <!-- Thanh Tab -->
+            <div style="background: #f1f5f9; padding: 5px; border-radius: 10px; display: flex; gap: 4px; margin-bottom: 24px;">
+                <button id="tab-information" class="profile-pill-tab active" onclick="window.switchProfileTab('information')" style="flex: 1; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: #64748b; background: transparent;">Information</button>
+                <button id="tab-change-password" class="profile-pill-tab" onclick="window.switchProfileTab('change-password')" style="flex: 1; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: #64748b; background: transparent;">Password</button>
+                <button id="tab-face-id" class="profile-pill-tab" onclick="window.switchProfileTab('face-id')" style="flex: 1; border: none; padding: 10px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.85rem; color: #64748b; background: transparent;">Regris ID face</button>
             </div>
             
-            <!-- Tab Content: Profile Info -->
-            <div id="content-profile" class="tab-content" style="display: grid; gap: 16px;">
-                <div class="filter-group">
-                    <label class="filter-label">Employee ID</label>
-                    <input type="text" class="pro-input" value="${employee_id}" readonly style="background: #f8fafc; cursor: not-allowed;">
+            <!-- Tab Thông Tin -->
+            <div id="content-information" class="profile-tab-content-area info-grid">
+                <div class="info-field">
+                    <label>Employee ID</label>
+                    <input type="text" value="${user.employee_id || 'N/A'}" readonly>
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Username</label>
-                    <input type="text" class="pro-input" value="${user.username || ''}" readonly style="background: #f8fafc; cursor: not-allowed;">
+                <div class="info-field">
+                    <label>Username</label>
+                    <input type="text" value="${user.username || ''}" readonly>
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Full Name</label>
-                    <input type="text" id="profile-fullname" class="pro-input" value="${user.full_name || ''}" placeholder="Enter your full name">
+                <div class="info-field">
+                    <label>Full Name</label>
+                    <input type="text" id="profile-fullname" value="${user.full_name || ''}">
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Email</label>
-                    <input type="email" id="profile-email" class="pro-input" value="${user.email || ''}" placeholder="Enter your email">
+                <div class="info-field">
+                    <label>Date of Birth</label>
+                    <input type="date" id="profile-dob" value="${user.date_of_birth || ''}">
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Department</label>
-                    <input type="text" class="pro-input" value="${user.department_name || 'N/A'}" readonly style="background: #f8fafc; cursor: not-allowed;">
+                <div class="info-field" style="grid-column: span 2;">
+                    <label>Email</label>
+                    <input type="email" id="profile-email" value="${user.email || ''}">
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Position</label>
-                    <input type="text" class="pro-input" value="${user.position || 'N/A'}" readonly style="background: #f8fafc; cursor: not-allowed;">
+                <div class="info-field">
+                    <label>Department</label>
+                    <input type="text" value="${user.department_name || 'N/A'}" readonly>
                 </div>
-                
-                <button onclick="window.saveProfileInfo()" class="btn btn-primary" style="margin-top: 8px;">Save Changes</button>
+                <div class="info-field">
+                    <label>Position</label>
+                    <input type="text" value="${user.position_name || 'N/A'}" readonly>
+                </div>
+                <div class="info-field">
+                    <label>Joined Date</label>
+                    <input type="text" value="${user.hire_date || 'N/A'}" readonly>
+                </div>
+                <div class="info-field">
+                    <label>Salary</label>
+                    <input type="text" value="${user.salary || 'N/A'}" readonly>
+                </div>
+                <div style="grid-column: span 2; margin-top: 12px;">
+                    <button onclick="window.saveProfileInfo()" class="btn btn-primary" style="width: 100%; justify-content: center; padding: 12px; font-weight: 700;">Save Changes</button>
+                </div>
             </div>
             
-            <!-- Tab Content: Change Password -->
-            <div id="content-password" class="tab-content" style="display: none; gap: 18px;">
-                <div class="filter-group">
-                    <label class="filter-label">Current Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="password-current" class="pro-input" placeholder="Enter current password">
-                        <button onclick="window.togglePasswordVisibility('password-current')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: #94a3b8;">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
+            <!-- Tab Mật Khẩu -->
+            <div id="content-change-password" class="profile-tab-content-area" style="display: none; flex-direction: column; gap: 16px;">
+                <div class="form-group">
+                    <label class="form-label">Current Password</label>
+                    <input type="password" id="password-current" class="form-input" placeholder="••••••••">
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="password-new" class="pro-input" placeholder="Enter new password" oninput="window.validateNewPassword()">
-                        <button onclick="window.togglePasswordVisibility('password-new')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: #94a3b8;">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
-                    <div id="password-strength-container"></div>
-                    <div id="password-requirements-container"></div>
+                <div class="form-group">
+                    <label class="form-label">New Password</label>
+                    <input type="password" id="password-new" class="form-input" placeholder="Enter new password" oninput="window.validateNewPassword()">
+                    <div id="password-strength-container" style="margin-top: 8px;"></div>
+                    <div id="password-requirements-container" style="margin-top: 8px;"></div>
                 </div>
-                
-                <div class="filter-group">
-                    <label class="filter-label">Confirm New Password</label>
-                    <div style="position: relative;">
-                        <input type="password" id="password-confirm" class="pro-input" placeholder="Confirm new password" oninput="window.validateConfirmPassword()">
-                        <button onclick="window.togglePasswordVisibility('password-confirm')" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); border: none; background: none; cursor: pointer; color: #94a3b8;">
-                            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                    </div>
+                <div class="form-group">
+                    <label class="form-label">Confirm New Password</label>
+                    <input type="password" id="password-confirm" class="form-input" placeholder="Confirm new password" oninput="window.validateConfirmPassword()">
                     <div id="password-match-message" style="font-size: 0.75rem; margin-top: 4px;"></div>
                 </div>
-                
-                <button onclick="window.saveNewPassword()" class="btn btn-primary" style="margin-top: 8px;">Update Password</button>
+                <button onclick="window.saveNewPassword()" class="btn btn-primary" style="justify-content: center; padding: 12px; font-weight: 700;">Update Password</button>
+            </div>
+            
+            <!-- Tab Face ID -->
+            <div id="content-face-id" class="profile-tab-content-area" style="display: none; flex-direction: column; align-items: center; gap: 20px;">
+                <div style="width: 100%; aspect-ratio: 4/3; background: #0f172a; border-radius: 12px; position: relative; overflow: hidden; border: 1px solid #334155;">
+                    <video id="enroll-video" autoplay playsinline muted style="width: 100%; height: 100%; object-fit: cover; transform: scaleX(-1);"></video>
+                    <canvas id="enroll-canvas" style="display: none;"></canvas>
+                    <div id="enroll-overlay" style="position: absolute; inset: 0; border: 2px dashed rgba(59, 130, 246, 0.4); border-radius: 50%; width: 60%; height: 80%; margin: auto; pointer-events: none;"></div>
+                    <div id="enroll-status" style="position: absolute; bottom: 20px; left: 0; right: 0; text-align: center;">
+                        <span id="enroll-status-text" style="background: rgba(0,0,0,0.7); color: white; padding: 6px 16px; border-radius: 20px; font-size: 0.85rem;">Click "Start Registration"</span>
+                    </div>
+                </div>
+                <div style="display: flex; gap: 12px; width: 100%;">
+                    <button id="btn-start-enroll" onclick="window.startFaceEnroll()" class="btn btn-primary" style="flex: 1; justify-content: center;">Start Registration</button>
+                    <button id="btn-stop-enroll" onclick="window.stopFaceEnroll()" class="btn btn-secondary" style="display: none; flex: 1; justify-content: center;">Cancel</button>
+                </div>
+                <div id="enroll-progress" style="width: 100%; height: 4px; background: #e2e8f0; border-radius: 2px; display: none;">
+                    <div id="enroll-progress-bar" style="width: 0%; height: 100%; background: #3b82f6; border-radius: 2px; transition: width 0.3s;"></div>
+                </div>
             </div>
         </div>
     `;
@@ -120,145 +153,156 @@ window.openMyProfileModal = async function () {
         title: "My Profile",
         content: content,
         submitText: "Close",
-        hideCancel: true,
-        onSubmit: () => { }
+        cancelText: "Cancel",
+        onSubmit: () => { window.stopFaceEnroll(); }
     });
+
+    // Khởi tạo tab ban đầu
+    window.switchProfileTab(currentTab);
 };
 
-// Tab switching
 window.switchProfileTab = function (tab) {
-    document.querySelectorAll('.profile-tab').forEach(t => t.classList.remove('active'));
-    document.querySelectorAll('.tab-content').forEach(c => c.style.display = 'none');
+    // Đồng bộ Tab - Dùng helpers tập trung
+    const prefix = window.getRolePrefix ? window.getRolePrefix() : '';
+    const basePath = window.location.pathname.startsWith('/finova') ? '/finova' : '';
 
-    document.getElementById(`tab-${tab}`).classList.add('active');
-    document.getElementById(`content-${tab}`).style.display = 'grid';
-};
+    const tabUrls = {
+        'information': 'myprofile/information',
+        'change-password': 'myprofile/password-change',
+        'face-id': 'myprofile/registration'
+    };
 
-// Password visibility toggle
-window.togglePasswordVisibility = function (inputId) {
-    const input = document.getElementById(inputId);
-    input.type = input.type === 'password' ? 'text' : 'password';
-};
+    const targetPath = tabUrls[tab] || 'myprofile/information';
+    const newUrl = `${basePath}/${prefix}${targetPath}`.replace(/\/+/g, '/');
+    window.history.pushState({}, '', newUrl);
 
-// Validate new password
-window.validateNewPassword = async function () {
-    const { validatePassword, renderStrengthIndicator, renderRequirements } = await import('../utils/password-validator.js');
-    const newPassword = document.getElementById('password-new').value;
-    const validation = validatePassword(newPassword);
+    document.querySelectorAll('.profile-pill-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.profile-tab-content-area').forEach(c => c.style.display = 'none');
 
-    const strengthContainer = document.getElementById('password-strength-container');
-    const reqContainer = document.getElementById('password-requirements-container');
+    const activeTab = document.getElementById(`tab-${tab}`);
+    if (activeTab) activeTab.classList.add('active');
 
-    if (newPassword) {
-        strengthContainer.innerHTML = renderStrengthIndicator(validation.strength);
-        reqContainer.innerHTML = renderRequirements(validation);
-
-        // Color input border
-        const input = document.getElementById('password-new');
-        if (validation.valid) {
-            input.style.borderColor = '#10b981';
-        } else {
-            input.style.borderColor = '#ef4444';
-        }
-    } else {
-        strengthContainer.innerHTML = '';
-        reqContainer.innerHTML = '';
-        document.getElementById('password-new').style.borderColor = '';
+    const activeContent = document.getElementById(`content-${tab}`);
+    if (activeContent) {
+        if (tab === 'information') activeContent.style.display = 'grid';
+        else activeContent.style.display = 'flex';
     }
 
-    // Also validate confirm
-    window.validateConfirmPassword();
+    if (tab !== 'face-id') window.stopFaceEnroll();
 };
 
-// Validate confirm password
-window.validateConfirmPassword = function () {
-    const newPassword = document.getElementById('password-new').value;
-    const confirmPassword = document.getElementById('password-confirm').value;
-    const messageEl = document.getElementById('password-match-message');
-    const confirmInput = document.getElementById('password-confirm');
-
-    if (!confirmPassword) {
-        messageEl.innerHTML = '';
-        confirmInput.style.borderColor = '';
-        return;
-    }
-
-    if (newPassword === confirmPassword) {
-        messageEl.innerHTML = '<span style="color: #10b981;">✓ Passwords match</span>';
-        confirmInput.style.borderColor = '#10b981';
-    } else {
-        messageEl.innerHTML = '<span style="color: #ef4444;">✗ Passwords do not match</span>';
-        confirmInput.style.borderColor = '#ef4444';
-    }
-};
-
-// Save profile info
 window.saveProfileInfo = async function () {
-    const { updateMyProfile, fetchDashboardData } = await import('../core/api.js');
+    const { updateMyProfile, fetchProfile } = await import('../core/api.js');
     const { showToast } = await import('../utils/toast.js');
 
     const fullName = document.getElementById('profile-fullname').value.trim();
     const email = document.getElementById('profile-email').value.trim();
+    const dob = document.getElementById('profile-dob').value;
 
     if (!fullName || !email) {
-        showToast('Please fill in all required fields', 'error');
+        showToast('Name and Email required', 'error');
         return;
     }
 
     try {
-        await updateMyProfile({ full_name: fullName, email: email });
-        showToast('Profile updated successfully! 🎉', 'success');
-
-        // Refresh data
-        await fetchDashboardData();
-
-        // Close modal and refresh
-        document.querySelector('.modal-overlay')?.click();
+        await updateMyProfile({ full_name: fullName, email: email, date_of_birth: dob });
+        showToast('Profile updated', 'success');
+        await fetchProfile();
+        // Cập nhật thông tin cơ bản trong header modal
+        const appData = (await import('../core/state.js')).getState();
+        const headerName = document.querySelector('#profile-modal-container h2');
+        if (headerName) headerName.textContent = appData.currentUser.full_name;
     } catch (err) {
         showToast(err.message, 'error');
     }
 };
 
-// Save new password
+window.startFaceEnroll = async function () {
+    const video = document.getElementById('enroll-video');
+    const statusText = document.getElementById('enroll-status-text');
+    const btnStart = document.getElementById('btn-start-enroll');
+    const btnStop = document.getElementById('btn-stop-enroll');
+    const progressBar = document.getElementById('enroll-progress');
+
+    try {
+        enrollStream = await navigator.mediaDevices.getUserMedia({ video: true });
+        if (video) video.srcObject = enrollStream;
+        isEnrolling = true;
+        if (btnStart) btnStart.style.display = 'none';
+        if (btnStop) btnStop.style.display = 'flex';
+        if (progressBar) progressBar.style.display = 'block';
+        if (statusText) statusText.textContent = "Processing...";
+        setTimeout(() => processEnrollFrame('complete'), 1500);
+    } catch (err) {
+        import('../utils/toast.js').then(m => m.showToast("Camera Error: " + err.message, "error"));
+    }
+};
+
+window.stopFaceEnroll = function () {
+    isEnrolling = false;
+    if (enrollStream) {
+        enrollStream.getTracks().forEach(t => t.stop());
+        enrollStream = null;
+    }
+    const btnStart = document.getElementById('btn-start-enroll');
+    const btnStop = document.getElementById('btn-stop-enroll');
+    const statusText = document.getElementById('enroll-status-text');
+    if (btnStart) btnStart.style.display = 'flex';
+    if (btnStop) btnStop.style.display = 'none';
+    if (statusText) statusText.textContent = 'Click "Start Registration"';
+};
+
+async function processEnrollFrame(stepId) {
+    if (!isEnrolling) return;
+    const v = document.getElementById('enroll-video');
+    const c = document.getElementById('enroll-canvas');
+    if (!v || !c) return;
+    c.width = v.videoWidth; c.height = v.videoHeight;
+    c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+    const img = c.toDataURL('image/jpeg', 0.8);
+    try {
+        const { fetchAPI } = await import('../core/api.js');
+        const res = await fetchAPI('/api/v1/face-attendance/enroll-step', { method: 'POST', body: JSON.stringify({ image_data: img, step_id: stepId }) });
+        if (res.ok) {
+            const statusText = document.getElementById('enroll-status-text');
+            statusText.textContent = "SUCCESSFUL";
+            statusText.style.background = "#10b981";
+            import('../utils/toast.js').then(m => m.showToast("Face ID registered", "success"));
+            setTimeout(() => window.stopFaceEnroll(), 2000);
+        } else {
+            document.getElementById('enroll-status-text').textContent = res.message || "Keep face centered";
+            setTimeout(() => processEnrollFrame(stepId), 500);
+        }
+    } catch (err) { setTimeout(() => processEnrollFrame(stepId), 1000); }
+}
+
+window.validateNewPassword = async function () {
+    const { validatePassword, renderStrengthIndicator, renderRequirements } = await import('../utils/password-validator.js');
+    const pass = document.getElementById('password-new').value;
+    const v = validatePassword(pass);
+    document.getElementById('password-strength-container').innerHTML = renderStrengthIndicator(v.strength);
+    document.getElementById('password-requirements-container').innerHTML = renderRequirements(v);
+};
+
+window.validateConfirmPassword = function () {
+    const p1 = document.getElementById('password-new').value;
+    const p2 = document.getElementById('password-confirm').value;
+    const msg = document.getElementById('password-match-message');
+    if (!p2) { msg.innerHTML = ''; return; }
+    msg.innerHTML = p1 === p2 ? '<span style="color: #10b981;">✓ Passwords match</span>' : '<span style="color: #ef4444;">✗ Passwords do not match</span>';
+};
+
 window.saveNewPassword = async function () {
     const { changeMyPassword } = await import('../core/api.js');
     const { showToast } = await import('../utils/toast.js');
-    const { validatePassword } = await import('../utils/password-validator.js');
-
-    const currentPassword = document.getElementById('password-current').value;
-    const newPassword = document.getElementById('password-new').value;
-    const confirmPassword = document.getElementById('password-confirm').value;
-
-    if (!currentPassword || !newPassword || !confirmPassword) {
-        showToast('Please fill in all password fields', 'error');
-        return;
-    }
-
-    if (newPassword !== confirmPassword) {
-        showToast('New passwords do not match', 'error');
-        return;
-    }
-
-    const validation = validatePassword(newPassword);
-    if (!validation.valid) {
-        showToast('New password does not meet requirements', 'error');
-        return;
-    }
-
+    const oldP = document.getElementById('password-current').value;
+    const newP = document.getElementById('password-new').value;
+    const confP = document.getElementById('password-confirm').value;
+    if (!oldP || !newP || !confP) { showToast('Please fill all fields', 'error'); return; }
+    if (newP !== confP) { showToast('Passwords do not match', 'error'); return; }
     try {
-        await changeMyPassword(currentPassword, newPassword);
-        showToast('Password changed successfully! 🔐', 'success');
-
-        // Clear fields
-        document.getElementById('password-current').value = '';
-        document.getElementById('password-new').value = '';
-        document.getElementById('password-confirm').value = '';
-
-        // Close modal
-        setTimeout(() => {
-            document.querySelector('.modal-overlay')?.click();
-        }, 1500);
-    } catch (err) {
-        showToast(err.message, 'error');
-    }
+        await changeMyPassword(oldP, newP);
+        showToast('Password updated', 'success');
+        document.getElementById('password-current').value = ''; document.getElementById('password-new').value = ''; document.getElementById('password-confirm').value = '';
+    } catch (err) { showToast(err.message, 'error'); }
 };

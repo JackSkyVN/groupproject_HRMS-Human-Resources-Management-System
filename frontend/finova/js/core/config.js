@@ -1,14 +1,14 @@
 /**
- * Configuration - API URLs and Constants
+ * Cấu hình - API URLs và Constants
  */
 
 // API Base URL
-export const API_BASE_URL = 'http://127.0.0.1:8000'; // ← Updated to port 8000
+export const API_BASE_URL = 'http://127.0.0.1:8000'; // ← Cập nhật sang port 8000
 
-// Pagination
+// Phân trang
 export const ITEMS_PER_PAGE = 20;
 
-// Leadership Positions
+// Các chức vụ lãnh đạo
 export const LEADERSHIP_POSITIONS = [
     "Chairman of Members' Council",
     "Full-time Council Member",
@@ -25,19 +25,19 @@ export const LEADERSHIP_POSITIONS = [
     "Main Office Team Leader"
 ];
 
-// General Positions
+// Các chức vụ chung
 export const GENERAL_POSITIONS = [
     "Specialist",
     "Senior Specialist",
     "Engineer",
-    "Staff",
+    "Employee",
     "Driver",
     "Treasurer",
     "Specialist, VT",
     "Specialist, Clerk"
 ];
 
-// Departments
+// Các phòng ban
 export const GENERAL_DEPTS = [
     "Administration Department",
     "Appraisal Department",
@@ -60,7 +60,7 @@ export const GENERAL_DEPTS = [
     "Tender Expert Group"
 ];
 
-// Core Council Usernames (excluded from attendance tracking)
+// Usernames Hội đồng cốt lõi (loại trừ khỏi theo dõi chấm công)
 export const CORE_COUNCIL_USERNAMES = [
     "truong1979746",
     "tran1975778",
@@ -68,7 +68,7 @@ export const CORE_COUNCIL_USERNAMES = [
     "le1984949"
 ];
 
-// Work Schedule
+// Lịch làm việc
 export const WORK_SCHEDULE = {
     shiftStart: "08:30",
     shiftEnd: "17:30",

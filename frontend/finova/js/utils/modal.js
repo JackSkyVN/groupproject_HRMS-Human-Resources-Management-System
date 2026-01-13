@@ -1,5 +1,5 @@
 /**
- * Modal Utility
+ * Tiện ích Modal
  */
 
 export function openModal(id) {
@@ -19,7 +19,7 @@ export function closeModal(id) {
             modal.remove();
         }
     } else {
-        // Close all modals
+        // Đóng tất cả modals
         document.querySelectorAll('.modal-overlay').forEach(m => m.remove());
     }
 }
@@ -49,7 +49,7 @@ export function createModal(config) {
 
     document.body.insertAdjacentHTML('beforeend', modalHTML);
 
-    // Store handlers
+    // Lưu các handlers
     if (onSubmit) window[`modalSubmit_${modalId}`] = onSubmit;
     if (onCancel) window[`modalCancel_${modalId}`] = onCancel;
 
@@ -58,7 +58,7 @@ export function createModal(config) {
     return modalId;
 }
 
-// Global helpers for onclick
+// Helpers global cho onclick
 window.closeModal = function (id) {
     closeModal(id);
 };

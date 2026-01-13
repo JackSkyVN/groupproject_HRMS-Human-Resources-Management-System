@@ -1,4 +1,4 @@
-# Import all models for Alembic autogenerate
+# Import tất cả models
 from app.models.roles import Role
 from app.models.departments import Department
 from app.models.positions import Position
@@ -14,6 +14,8 @@ from app.models.payroll_detail import PayrollDetail
 from app.models.notification import Notification
 from app.models.notification_recipient import NotificationRecipient
 from app.models.salary_adjustment import SalaryAdjustment
+from app.models.face_logs import FaceLog
+from app.models.face_reset_requests import FaceResetRequest
 
 __all__ = [
     "Role",
@@ -31,4 +33,6 @@ __all__ = [
     "Notification",
     "NotificationRecipient",
     "SalaryAdjustment",
+    "FaceLog",
+    "FaceResetRequest",
 ]

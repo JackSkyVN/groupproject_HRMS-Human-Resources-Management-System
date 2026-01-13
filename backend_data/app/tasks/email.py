@@ -11,8 +11,7 @@ def send_email(to_addr: str, subject: str, body: str):
     msg["To"] = to_addr
     msg.set_content(body)
     
-    # Use settings for SMTP connection
-    # Note: This is a basic implementation. For production, consider using starttls() and login()
+    # Sử dụng settings cho SMTP
     try:
         with smtplib.SMTP(settings.MAIL_SERVER, settings.MAIL_PORT) as s:
             if settings.MAIL_USERNAME and settings.MAIL_PASSWORD:

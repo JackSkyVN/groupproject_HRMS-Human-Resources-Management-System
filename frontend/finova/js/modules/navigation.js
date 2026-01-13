@@ -1,16 +1,17 @@
 /**
- * Navigation Module - Sidebar, page routing, header
- * Implementing History API for clean URLs (e.g., /finova/dashboard)
+ * Module Navigation - Sidebar, điều hướng trang, header
+ * Triển khai History API cho URLs sạch (đ dụ, /finova/dashboard)
  */
 
 import { getState, setCurrentPage } from '../core/state.js';
 import { logout, fetchAnnouncements, dismissNotification } from '../core/api.js';
+import { API_BASE_URL } from '../core/config.js';
 import './profile-modal.js';  // My Profile modal with tabs
 
 /**
- * Detect base path dynamically. 
- * If running on localhost:5500/finova/index.html, base is /finova
- * If running on localhost:5500/index.html (where finova is root), base is empty
+ * Phát hiện base path động. 
+ * Nếu chạy trên localhost:5500/finova/index.html, base là /finova
+ * Nếu chạy trên localhost:5500/index.html (finova là root), base là rỗng
  */
 function getBasePath() {
     const path = window.location.pathname.toLowerCase();
@@ -18,7 +19,7 @@ function getBasePath() {
     return '';
 }
 
-const BASE_PATH = getBasePath();
+export const BASE_PATH = getBasePath();
 
 export function initNavigation() {
     updateSidebarVisibility();
@@ -26,23 +27,55 @@ export function initNavigation() {
     setupLogoListener();
     setupHeaderListeners();
 
-    // Handle browser back/forward buttons
+    // Xử lý nút back/forward của browser
     window.addEventListener('popstate', () => {
         const path = window.location.pathname;
-        const page = path.replace(`${BASE_PATH}/`, '').replace(BASE_PATH, '') || 'dashboard';
+        const page = parsePageFromPath(path);
         switchPage(page, false);
     });
 
-    // Handle initial load
+    // Xử lý tải ban đầu
     const path = window.location.pathname;
-    let initialPage = path.replace(`${BASE_PATH}/`, '').replace(BASE_PATH, '') || 'dashboard';
+    let initialPage = parsePageFromPath(path);
+    switchPage(initialPage, false);
+}
 
-    // Cleanup initial page string
-    if (initialPage === 'index.html' || initialPage === '/' || initialPage === '' || initialPage === BASE_PATH) {
-        initialPage = 'dashboard';
+function parsePageFromPath(path) {
+    // Loại bỏ base path và prefix chuyên nghiệp
+    let page = path.replace(`${BASE_PATH}/`, '').replace(BASE_PATH, '') || 'dashboard';
+
+    // Loại bỏ các prefix đã biết như /admin/, /hr-manager/, /staff/, etc.
+    const prefixes = [
+        'admin/',
+        'hr-manager/',
+        'hr-it/',
+        'hr-finance/',
+        'hr-construction/',
+        'hr-administration/',
+        'hr-support/',
+        'hr-staff/',
+        'staff/',
+        'director/',
+        'manager-HR/',
+        'employee/'
+    ];
+    for (const p of prefixes) {
+        if (page.startsWith(p)) {
+            page = page.replace(p, '');
+            break;
+        }
     }
 
-    switchPage(initialPage, false);
+    if (page === 'index.html' || page === '/' || page === '' || page === 'dashboard') {
+        return 'dashboard';
+    }
+
+    // Xử lý deep links cho profiles
+    if (page.startsWith('myprofile/')) {
+        return page;
+    }
+
+    return page;
 }
 
 function setupNavListeners() {
@@ -75,11 +108,47 @@ function setupLogoListener() {
     }
 }
 
-export function navigateTo(pageId) {
-    // Construct clean URL - always show the page name explicitly
-    const newPath = `${BASE_PATH}/${pageId}`;
+export function getRolePrefix() {
+    const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
+    const positionName = localStorage.getItem('position_name') || '';
 
-    // Avoid double slashes
+    // Xác định prefix chuyên nghiệp dựa trên role và position
+    let prefix = 'staff/'; // Mặc định cho Level 4
+
+    if (roleLevel === 1) {
+        prefix = 'admin/';
+    } else if (roleLevel === 2) {
+        prefix = 'hr-manager/';
+    } else if (roleLevel === 3) {
+        // HR Staff - xác định subdirectory dựa trên position
+        const posLower = positionName.toLowerCase();
+        if (posLower.includes('it')) {
+            prefix = 'hr-it/';
+        } else if (posLower.includes('finance')) {
+            prefix = 'hr-finance/';
+        } else if (posLower.includes('construction')) {
+            prefix = 'hr-construction/';
+        } else if (posLower.includes('administration')) {
+            prefix = 'hr-administration/';
+        } else if (posLower.includes('other') || posLower.includes('support')) {
+            prefix = 'hr-support/';
+        } else {
+            prefix = 'hr-staff/'; // dự phòng
+        }
+    }
+    return prefix;
+}
+
+// Hiển thị toàn cục
+window.getRolePrefix = getRolePrefix;
+
+export function navigateTo(pageId) {
+    const prefix = getRolePrefix();
+
+    // Xây dựng URL chuyên nghiệp
+    const newPath = `${BASE_PATH}/${prefix}${pageId}`;
+
+    // Tránh double slashes và sửa URL
     const fixedPath = newPath.replace(/\/+/g, '/');
 
     window.history.pushState({ pageId }, '', fixedPath);
@@ -87,7 +156,7 @@ export function navigateTo(pageId) {
 }
 
 export async function switchPage(page, updateHistory = true) {
-    // Sanitize page ID - Keep slashes for nested routing
+    // Làm sạch page ID - Giữ slashes cho nested routing
     const cleanPage = page.replace('.html', '');
 
     if (updateHistory) {
@@ -97,7 +166,7 @@ export async function switchPage(page, updateHistory = true) {
 
     setCurrentPage(cleanPage);
 
-    // Update Sidebar state
+    // Cập nhật trạng thái Sidebar
     document.querySelectorAll('.nav-item').forEach(btn => {
         const btnPage = btn.getAttribute('data-page');
         const isActive = btnPage === cleanPage ||
@@ -114,7 +183,7 @@ export async function switchPage(page, updateHistory = true) {
 }
 
 /**
- * Sidebar Permissions & Localization
+ * Quyền Sidebar & Bản địa hóa
  */
 export function updateSidebarVisibility() {
     const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
@@ -141,38 +210,102 @@ export function updateSidebarVisibility() {
         }
     });
 
-    // 2. Handle Submenus for Attendance & Salary
+    // 2. Xử lý Submenus cho Attendance & Salary
     const attendanceGroup = document.getElementById('attendance-nav-group');
     const salaryGroup = document.getElementById('salary-nav-group');
 
     if (attendanceGroup) {
-        const submenu = attendanceGroup.querySelector('.submenu');
-        if (submenu) submenu.style.display = roleLevel <= 3 ? 'block' : 'none';
+        let submenu = attendanceGroup.querySelector('.submenu');
+        if (!submenu) {
+            submenu = document.createElement('div');
+            submenu.className = 'submenu';
+            attendanceGroup.appendChild(submenu);
+        }
+
+        // LUÔN cập nhật submenu HTML để đảm bảo code mới nhất
+        submenu.innerHTML = `
+            <button class="submenu-item" data-page="attendance-my">
+                <span class="nav-text">My Attendance</span>
+            </button>
+            <button class="submenu-item" data-page="attendance-team" data-requires-level="3">
+                <span class="nav-text">Employee Attendance</span>
+            </button>
+            <button class="submenu-item" data-page="ai-insights" data-requires-level="2">
+                <span class="nav-text">Diagnostic Insights</span>
+            </button>
+            <button class="submenu-item" data-page="face-requests" data-requires-level="3">
+                <span class="nav-text">Face ID Requests</span>
+            </button>
+            <button class="submenu-item" data-page="gate-monitoring" data-requires-level="2">
+                <span class="nav-text">Gate Monitoring</span>
+            </button>
+            <button class="submenu-item" data-page="snapshots" data-requires-level="2">
+                <span class="nav-text">Snapshots</span>
+            </button>
+        `;
+
+        // Luôn hiện submenu, nhưng ẩn các item cụ thể dựa trên role
+        submenu.style.display = 'block';
+
+        // Ẩn Employee Attendance cho Level 4
+        const employeeAttendanceBtn = submenu.querySelector('[data-page="attendance-team"]');
+        if (employeeAttendanceBtn) {
+            employeeAttendanceBtn.style.display = roleLevel <= 3 ? 'block' : 'none';
+        }
+
+        // Ẩn AI Insights cho Level 3 và 4
+        const aiMetricsBtn = submenu.querySelector('[data-page="ai-insights"]');
+        if (aiMetricsBtn) {
+            aiMetricsBtn.style.display = roleLevel <= 2 ? 'block' : 'none';
+        }
+
+        // Ẩn Face ID Requests cho Level 3 và 4
+        const faceRequestsBtn = submenu.querySelector('[data-page="face-requests"]');
+        if (faceRequestsBtn) {
+            faceRequestsBtn.style.display = roleLevel <= 3 ? 'block' : 'none';
+        }
+
+        // Ẩn Gate Monitoring cho Level 3 và 4
+        const gateMonitoringBtn = submenu.querySelector('[data-page="gate-monitoring"]');
+        if (gateMonitoringBtn) {
+            gateMonitoringBtn.style.display = roleLevel <= 2 ? 'block' : 'none';
+        }
+
+        // Ẩn Snapshots cho Level 3 và 4
+        const snapshotsBtn = submenu.querySelector('[data-page="snapshots"]');
+        if (snapshotsBtn) {
+            snapshotsBtn.style.display = roleLevel <= 2 ? 'block' : 'none';
+        }
     }
 
     if (salaryGroup) {
-        // Inject or update Salary submenu
+        // Inject hoặc cập nhật submenu Salary
         let submenu = salaryGroup.querySelector('.submenu');
-        if (!submenu && roleLevel <= 3) {
+        if (!submenu) {
             submenu = document.createElement('div');
             submenu.className = 'submenu';
             submenu.innerHTML = `
                 <button class="submenu-item" data-page="salary-my/payroll">
                     <span class="nav-text">My Salary</span>
                 </button>
-                <button class="submenu-item" data-page="salary-team/payroll">
+                <button class="submenu-item" data-page="salary-team/payroll" data-requires-level="3">
                     <span class="nav-text">Employee Salary</span>
                 </button>
             `;
             salaryGroup.appendChild(submenu);
         }
 
-        if (submenu) {
-            submenu.style.display = roleLevel <= 3 ? 'block' : 'none';
+        // Luôn hiện submenu
+        submenu.style.display = 'block';
+
+        // Ẩn Employee Salary cho Level 4
+        const employeeSalaryBtn = submenu.querySelector('[data-page="salary-team/payroll"]');
+        if (employeeSalaryBtn) {
+            employeeSalaryBtn.style.display = roleLevel <= 3 ? 'block' : 'none';
         }
     }
 
-    // 3. Setup sub-nav listeners (for newly injected elements)
+    // 3. Thiết lập sub-nav listeners (cho các elements được inject mới)
     const submenuItems = document.querySelectorAll('.submenu-item');
     submenuItems.forEach(btn => {
         btn.onclick = (e) => {
@@ -182,12 +315,16 @@ export function updateSidebarVisibility() {
         };
     });
 
-    // Cleanup legacy performance module
+    // Dọn dẹp module performance legacy
     const performanceNav = document.getElementById('performance-nav-group') || document.querySelector('[data-page="performance"]')?.parentElement;
     if (performanceNav) performanceNav.remove();
 }
 
+let isHeaderSetup = false;
 export function setupHeaderListeners() {
+    if (isHeaderSetup) return;
+    isHeaderSetup = true;
+
     const logoutBtn = document.getElementById('logout-btn');
     if (logoutBtn) {
         logoutBtn.addEventListener('click', () => logout());
@@ -196,11 +333,11 @@ export function setupHeaderListeners() {
     const profileBtn = document.getElementById('profile-btn');
     if (profileBtn) {
         profileBtn.addEventListener('click', () => {
-            window.openMyProfileModal();
+            window.navigateTo('myprofile/information');
         });
     }
 
-    // Notification Bell Logic
+    // Logic Chuông Thông báo
     const bellBtn = document.getElementById('notification-bell');
     const dropdown = document.getElementById('notification-dropdown');
     const markAllReadBtn = document.getElementById('mark-all-read-btn');
@@ -208,12 +345,25 @@ export function setupHeaderListeners() {
     if (bellBtn && dropdown) {
         bellBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            dropdown.classList.toggle('active');
-            updateNotificationUI();
+
+            // Tính toán vị trí cho dropdown cố định
+            const rect = bellBtn.getBoundingClientRect();
+            dropdown.style.position = 'fixed';
+            dropdown.style.top = `${rect.bottom + 8}px`;
+            dropdown.style.right = `${window.innerWidth - rect.right}px`;
+            dropdown.style.left = 'auto';
+
+            // Bật/tắt hiển thị
+            if (dropdown.style.display === 'none' || dropdown.style.display === '') {
+                dropdown.style.display = 'block';
+                updateNotificationUI();
+            } else {
+                dropdown.style.display = 'none';
+            }
         });
 
         document.addEventListener('click', () => {
-            dropdown.classList.remove('active');
+            dropdown.style.display = 'none';
         });
 
         dropdown.addEventListener('click', (e) => e.stopPropagation());
@@ -237,9 +387,9 @@ export function setupHeaderListeners() {
         });
     }
 
-    // Initial check for notifications
+    // Kiểm tra ban đầu cho thông báo
     updateNotificationUI();
-    // Auto refresh notifications every 30 seconds
+    // Tự động làm mới thông báo mỗi 30 giây
     setInterval(async () => {
         await fetchAnnouncements();
         updateNotificationUI();
@@ -247,22 +397,23 @@ export function setupHeaderListeners() {
 }
 
 /**
- * Update the badge and dropdown items
+ * Cập nhật badge và các dropdown items
  */
 export function updateNotificationUI() {
     const appData = getState();
     const list = document.getElementById('notification-list');
     const badge = document.getElementById('notification-badge');
     const announcements = appData.announcements || [];
+    const visibleAnnouncements = announcements; // Backend đã lọc những cái ẩn
 
     if (badge) {
-        badge.textContent = announcements.length;
-        badge.style.display = announcements.length > 0 ? 'flex' : 'none';
+        badge.textContent = visibleAnnouncements.length;
+        badge.style.display = visibleAnnouncements.length > 0 ? 'flex' : 'none';
     }
 
     if (!list) return;
 
-    if (announcements.length === 0) {
+    if (visibleAnnouncements.length === 0) {
         list.innerHTML = `
             <div style="padding: 40px 20px; text-align: center; color: #94a3b8;">
                 <div style="font-size: 2rem; margin-bottom: 10px;">✨</div>
@@ -272,7 +423,7 @@ export function updateNotificationUI() {
         return;
     }
 
-    list.innerHTML = announcements.map(ann => `
+    list.innerHTML = visibleAnnouncements.map(ann => `
         <div class="notification-item" style="display: flex; gap: 12px; padding: 16px; border-bottom: 1px solid #f1f5f9; position: relative; cursor: pointer;" onclick="window.switchPage('announcements')">
             <div style="flex-shrink: 0; width: 40px; height: 40px; background: #eff6ff; color: #3b82f6; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -295,25 +446,38 @@ export function updateNotificationUI() {
     `).join('');
 }
 
-window.dismissNotif = async function (id, e) {
+export async function dismissNotif(id, e) {
     if (e) e.stopPropagation();
+
     try {
+        // Gọi API để soft delete
         await dismissNotification(id);
-        const { fetchAnnouncements } = await import('../core/api.js');
+
+        // Làm mới dữ liệu announcements từ server (sẽ lọc những cái ẩn)
         await fetchAnnouncements();
+
+        // Cập nhật UI chuông
         updateNotificationUI();
 
-        // If we are on announcements page, refresh it
-        const { getCurrentPage } = await import('../core/state.js');
-        if (getCurrentPage() === 'announcements') {
+        // Nếu đang ở trang announcements, cũng làm mới nó
+        const state = getState();
+        if (state.currentPage === 'announcements') {
             const { renderAnnouncements } = await import('./announcements.js');
             const contentArea = document.getElementById('content-area');
-            if (contentArea) {
-                contentArea.innerHTML = await renderAnnouncements();
-            }
+            if (contentArea) contentArea.innerHTML = await renderAnnouncements();
         }
-    } catch (err) {
-        import('../utils/toast.js').then(m => m.showToast(err.message, "error"));
+
+        // Lưu ý: showToast thường global hoặc có từ nơi khác, 
+        // nếu không thì có thể dùng alert hoặc bỏ qua nếu nó không được define.
+        // Dựa trên các files khác, nó nên có.
+        if (typeof showToast === 'function') {
+            showToast('Notification dismissed', 'success');
+        }
+    } catch (error) {
+        console.error('Error dismissing notification:', error);
+        if (typeof showToast === 'function') {
+            showToast('Failed to dismiss notification', 'error');
+        }
     }
 }
 
@@ -324,37 +488,88 @@ export function renderPage(page) {
     const contentArea = document.getElementById('content-area');
     if (!contentArea) return;
 
+    // Dọn dẹp camera nếu rời khỏi trang AI attendance
+    if (window.cleanupAICamera && typeof window.cleanupAICamera === 'function') {
+        window.cleanupAICamera();
+    }
+    if (window.p_stopEnroll && typeof window.p_stopEnroll === 'function') {
+        window.p_stopEnroll();
+    }
+
+    const V = new Date().getTime();
     const loaders = {
-        'dashboard': () => import('../modules/dashboard.js').then(m => contentArea.innerHTML = m.renderDashboard()),
-        'employees': () => import('../modules/employees.js').then(m => {
+        'dashboard': () => import(`../modules/dashboard.js?v=${V}`).then(m => contentArea.innerHTML = m.renderDashboard()),
+        'employees': () => import(`../modules/employees.js?v=${V}`).then(m => {
             contentArea.innerHTML = m.renderEmployees();
             m.setupEmployeesListeners();
         }),
-        'leave': () => import('../modules/leaves.js').then(m => contentArea.innerHTML = m.renderLeave()),
-        'attendance-team': () => import('../modules/attendance.js').then(m => contentArea.innerHTML = m.renderAttendance('team')),
-        'attendance-my': () => import('../modules/attendance.js').then(m => contentArea.innerHTML = m.renderAttendance('my')),
-        'salary-team': () => import('../modules/payroll.js').then(m => contentArea.innerHTML = m.renderSalary('team')),
-        'salary-my': () => import('../modules/payroll.js').then(m => contentArea.innerHTML = m.renderSalary('my')),
-        'announcements': () => import('../modules/announcements.js').then(async m => contentArea.innerHTML = await m.renderAnnouncements()),
-        'ai-attendance': () => import('../modules/ai_attendance.js').then(m => contentArea.innerHTML = m.renderAIAttendance())
+        'leave': () => import(`../modules/leaves.js?v=${V}`).then(m => contentArea.innerHTML = m.renderLeave()),
+        'attendance-team': () => import(`../modules/attendance.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = m.renderAttendance('team');
+            if (m.setupAttendanceHandlers) m.setupAttendanceHandlers();
+        }),
+        'attendance-my': () => import(`../modules/attendance.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = m.renderAttendance('my');
+            if (m.setupAttendanceHandlers) m.setupAttendanceHandlers();
+        }),
+        'salary-my': () => import(`../modules/payroll.js?v=${V}`).then(async m => {
+            const { fetchEmployees, fetchPayroll } = await import(`../core/api.js?v=${V}`);
+            await fetchEmployees();
+            await fetchPayroll();
+            contentArea.innerHTML = m.renderSalary('my');
+        }),
+        'salary-team': () => import(`../modules/payroll.js?v=${V}`).then(async m => {
+            const { fetchEmployees, fetchPayroll } = await import(`../core/api.js?v=${V}`);
+            await fetchEmployees();
+            await fetchPayroll();
+            contentArea.innerHTML = m.renderSalary('team');
+        }),
+        'announcements': () => import(`../modules/announcements.js?v=${V}`).then(async m => contentArea.innerHTML = await m.renderAnnouncements()),
+        'ai-attendance': () => import(`../modules/ai_attendance.js?v=${V}`).then(m => contentArea.innerHTML = m.renderAIAttendance()),
+        'myprofile': () => import(`../modules/profile-page.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderProfilePage();
+            m.setupProfilePageHandlers();
+        }),
+        'ai-insights': () => import(`../modules/ai_insights.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderAIInsights();
+        }),
+        'face-requests': () => import(`../modules/face_requests.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderFaceRequests();
+        }),
+        'gate-monitoring': () => import(`../modules/gate-monitoring.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderGateMonitoring();
+        }),
+        'snapshots': () => import(`../modules/snapshots.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderSnapshots();
+            m.setupSnapshotsHandlers();
+        })
     };
 
-    // Special handling for nested salary routes: salary-my/payroll, salary-team/salary-request, etc.
+    // Xử lý đặc biệt cho nested salary routes
     if (page.startsWith('salary-')) {
         const parts = page.split('/');
         const modeAndBase = parts[0];
         const subPath = parts[1] || 'payroll';
-
         const mode = modeAndBase.replace('salary-', '');
         const subview = subPath === 'salary-request' ? 'adjustments' : 'list';
 
-        import('../modules/payroll.js').then(async m => {
-            // Pre-fetch adjustments if needed
+        import(`../modules/payroll.js?v=${V}`).then(async m => {
             if (subview === 'adjustments') {
-                const api = await import('../core/api.js');
+                const api = await import(`../core/api.js?v=${V}`);
                 await api.fetchSalaryAdjustments();
             }
             contentArea.innerHTML = m.renderSalary(mode, subview);
+        });
+        return;
+    }
+
+    // Xử lý deep links cho profiles
+    if (page.startsWith('myprofile/')) {
+        const subTab = page.split('/')[1] || 'information';
+        import(`../modules/profile-page.js?v=${V}`).then(async m => {
+            contentArea.innerHTML = await m.renderProfilePage();
+            m.setupProfilePageHandlers();
+            if (subTab !== 'information') window.switchProfileSubTab(subTab);
         });
         return;
     }

@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class Role(Base):
-    """
-    Bảng Roles - 4 vai trò chính trong hệ thống
-    Admin = 1, HR Chung = 2, HR Phòng ban = 3, Staff = 4
-    """
+    """Bảng định nghĩa các vai trò/quyền hạn (Admin, HR, v.v.)."""
     __tablename__ = "roles"
 
     role_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -15,5 +12,5 @@ class Role(Base):
     role_level = Column(Integer, nullable=False, index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
+    # Quan hệ (Relationships)
     employees = relationship("Employee", back_populates="role")

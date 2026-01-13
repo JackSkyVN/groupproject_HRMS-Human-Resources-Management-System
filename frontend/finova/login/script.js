@@ -13,7 +13,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const passwordInput = document.getElementById('password-input');
     const togglePassword = document.getElementById('togglePassword');
 
-    // Toggle Password Visibility
+    // Chức năng toggle hiển/ẩn mật khẩu
     if (togglePassword && passwordInput) {
         togglePassword.addEventListener('click', function (e) {
             e.preventDefault();
@@ -30,7 +30,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const rememberCheckbox = document.getElementById('remember-login');
     const usernameField = loginFormElement.querySelector('input[type="text"]');
 
-    // Auto-fill remembered username
+    // Tự động điền username đã lưu
     const savedUsername = localStorage.getItem('rememberedUsername');
     if (savedUsername && usernameField) {
         usernameField.value = savedUsername;
@@ -41,7 +41,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loginFormElement.addEventListener('submit', async (event) => {
             event.preventDefault();
 
-            // Updated selection to target correct inputs after UI changes
+            // Cập nhật selector để target đúng inputs sau khi thay đổi UI
             const usernameInput = usernameField;
             const passwordInput = loginFormElement.querySelector('input[type="password"]') || document.getElementById('password-input');
 
@@ -69,7 +69,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 });
 
                 if (response.ok) {
-                    // Handle Remember Me
+                    // Xử lý Remember Me
                     if (rememberCheckbox && rememberCheckbox.checked) {
                         localStorage.setItem('rememberedUsername', username);
                     } else {
@@ -86,14 +86,52 @@ document.addEventListener('DOMContentLoaded', () => {
                     localStorage.setItem('employee_code', data.employee_code);
                     localStorage.setItem('department_id', data.department_id);
                     localStorage.setItem('position_id', data.position_id);
+                    localStorage.setItem('position_name', data.position_name || '');
                     console.log('✅ SAVED department_id:', localStorage.getItem('department_id'));
                     console.log('✅ SAVED position_id:', localStorage.getItem('position_id'));
 
+                    // Xác định URL redirect dựa trên role
+                    let redirectPath = '/finova/';
+                    const roleLevel = parseInt(data.role_level);
+                    const positionName = data.position_name || '';
+
+                    if (roleLevel === 1) {
+                        // Admin
+                        redirectPath = '/finova/admin/dashboard';
+                    } else if (roleLevel === 2) {
+                        // HR Manager
+                        redirectPath = '/finova/hr-manager/dashboard';
+                    } else if (roleLevel === 3) {
+                        // HR Staff - xác định thư mục con dựa trên position
+                        const posLower = positionName.toLowerCase();
+                        if (posLower.includes('it')) {
+                            redirectPath = '/finova/hr-it/dashboard';
+                        } else if (posLower.includes('finance')) {
+                            redirectPath = '/finova/hr-finance/dashboard';
+                        } else if (posLower.includes('construction')) {
+                            redirectPath = '/finova/hr-construction/dashboard';
+                        } else if (posLower.includes('administration')) {
+                            redirectPath = '/finova/hr-administration/dashboard';
+                        } else if (posLower.includes('other') || posLower.includes('support')) {
+                            redirectPath = '/finova/hr-support/dashboard';
+                        } else {
+                            redirectPath = '/finova/hr-staff/dashboard'; // dự phòng
+                        }
+                    } else if (roleLevel === 4) {
+                        // Staff
+                        redirectPath = '/finova/staff/dashboard';
+                    } else {
+                        // Dự phòng
+                        redirectPath = '/finova/dashboard';
+                    }
+
+                    console.log(`🔀 Redirecting to: ${redirectPath}`);
+
                     showToast('Logged in successfully!', 'success');
 
-                    // Small delay to let the toast be seen
+                    // Độ trễ nhỏ để hiển toast
                     setTimeout(() => {
-                        window.location.replace('/finova/dashboard');
+                        window.location.href = redirectPath;
                     }, 1200);
                 } else {
                     const errorData = await response.json();

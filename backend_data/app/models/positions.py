@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class Position(Base):
-    """
-    Bảng Positions - Chức vụ
-    Ví dụ: Giám đốc, Trưởng phòng, Nhân viên, Thực tập sinh
-    """
+    """Bảng định nghĩa các chức vụ công việc."""
     __tablename__ = "positions"
 
     position_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -16,6 +13,6 @@ class Position(Base):
     base_salary_range = Column(Numeric(15, 2), nullable=True)  # Mức lương cơ bản
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
+    # Quan hệ (Relationships)
     department = relationship("Department", back_populates="positions")
     employees = relationship("Employee", back_populates="position")

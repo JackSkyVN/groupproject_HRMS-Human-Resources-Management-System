@@ -5,10 +5,7 @@ from datetime import time as dt_time
 
 
 class WorkSchedule(Base):
-    """
-    Bảng Work_Schedule - Lịch làm việc
-    Định nghĩa ca làm việc của từng nhân viên theo ngày
-    """
+    """Bảng định nghĩa lịch làm việc tiêu chuẩn của nhân viên."""
     __tablename__ = "work_schedule"
 
     schedule_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -19,10 +16,10 @@ class WorkSchedule(Base):
     shift_end = Column(Time, nullable=False, default=dt_time(17, 0))  # 17:00
     is_working_day = Column(Boolean, default=True, nullable=False)  # False nếu nghỉ, ngày lễ
 
-    # Unique constraint: one schedule per employee per day
+    # Mỗi nhân viên có 1 lịch làm việc mỗi ngày
     __table_args__ = (
         Index('idx_schedule_employee_date', 'employee_id', 'work_date', unique=True),
     )
 
-    # Relationships
+    # Quan hệ (Relationships)
     employee = relationship("Employee", back_populates="work_schedules")

@@ -13,26 +13,23 @@ import { renderPage } from './modules/navigation.js';
 async function initApp() {
     console.log('[App] Initializing HR Dashboard...');
 
-    // 1. Initialize state
+    // 1. Khởi tạo state
     initState();
 
-    // 2. Setup navigation
+    // 2. Thiết lập navigation
     initNavigation();
 
-    // 3. Fetch all data from backend
+    // 3. Lấy tất cả dữ liệu từ backend
     try {
         const { getState, getCurrentPage } = await import('./core/state.js');
         const { renderPage } = await import('./modules/navigation.js');
 
         const state = getState();
-        state.isInitialLoading = true; // Mark as loading
+        state.isInitialLoading = true; // Đánh dấu đang loading
 
         await fetchDashboardData();
 
-        state.isInitialLoading = false; // Mark as done
-
-        // Setup header listeners after data is loaded and DOM is ready
-        setupHeaderListeners();
+        state.isInitialLoading = false; // Đánh dấu hoàn tất
 
         const currentPage = getCurrentPage();
 
@@ -46,10 +43,10 @@ async function initApp() {
         getState().isInitialLoading = false;
     }
 
-    // 4. Initial rendering is now handled by initNavigation based on URL hash
+    // 4. Rendering ban đầu được xử lý bởi initNavigation dựa trên URL hash
 
     console.log('[App] Initialization complete');
 }
 
-// Start app when DOM is ready
+// Khởi động app khi DOM ready
 document.addEventListener('DOMContentLoaded', initApp);

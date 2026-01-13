@@ -1,5 +1,5 @@
 /**
- * Toast Notifications Utility
+ * Tiện ích Thông báo Toast
  */
 
 export function showToast(message, type = 'success') {
@@ -65,7 +65,7 @@ export function hideToast(id) {
     if (toast) toast.remove();
 }
 
-// Add animation CSS if not exists
+// Thêm animation CSS nếu chưa có
 if (!document.getElementById('toast-styles')) {
     const style = document.createElement('style');
     style.id = 'toast-styles';

@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class SalaryComponent(Base):
-    """
-    Bảng Salary_Component - Thành phần lương
-    Các thành phần: Lương cơ bản, Phụ cấp, Thưởng, Tăng ca, Khấu trừ
-    """
+    """Bảng định nghĩa các thành phần cấu thành lương (Phụ cấp, Thưởng, Khấu trừ, v.v.)."""
     __tablename__ = "salary_component"
 
     component_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -17,5 +14,5 @@ class SalaryComponent(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
-    # Relationships
+    # Quan hệ (Relationships)
     payroll_details = relationship("PayrollDetail", back_populates="component")

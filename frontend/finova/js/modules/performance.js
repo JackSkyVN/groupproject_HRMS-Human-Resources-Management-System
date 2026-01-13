@@ -1,5 +1,5 @@
 /**
- * Performance Module
+ * Module Performance
  */
 
 import { getState } from '../core/state.js';

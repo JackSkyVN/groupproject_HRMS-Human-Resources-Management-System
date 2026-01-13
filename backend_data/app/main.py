@@ -16,30 +16,32 @@ from app.api.v1.routes.payroll import router as payroll_router
 from app.api.v1.routes.announcement import router as announcement_router
 from app.api.v1.routes.metadata import router as metadata_router
 from app.api.v1.routes.salary_adjustments import router as salary_adj_router
+from app.api.v1.routes.face_attendance import router as face_attendance_router
+from app.api.v1.routes.gate import router as gate_router
 
 from app.core.database import Base, engine
 import app.models  
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Các sự kiện vòng đời ứng dụng."""
-    # Start
-    print("\n\n" + "="*50)
-    print(">>> HRMS SERVER STARTED - NEW SCHEMA ACTIVE <<<")
-    print("="*50 + "\n\n")
-    print("HRMS Startup: Creating database tables...")
+    """Application lifespan events."""
+    # Tạo thư mục static nếu chưa tồn tại
+    os.makedirs("static/profiles", exist_ok=True)
+    
+    # Khởi động server
+    print("Server starting...")
     Base.metadata.create_all(bind=engine)
-    print("HRMS Tables Created.")
     
     yield
-    print("HRMS Shutdown.")
+    # Tắt server
 
 
 app = FastAPI(
     title=settings.app_name,
     lifespan=lifespan,
     docs_url="/docs",
-    redoc_url="/redoc"
+    redoc_url="/redoc",
+    redirect_slashes=False  # No auto-redirect, clean logs!
 )
 
 # CORS middleware cho phép frontend truy cập
@@ -48,11 +50,6 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:8080",
         "http://127.0.0.1:8080",
-        "http://localhost:3000",
-        "http://127.0.0.1:3000",
-        "http://localhost:5173",
-        "http://localhost:5500",
-        "http://127.0.0.1:5500",
     ],
     allow_credentials=True,
     allow_methods=["*"],
@@ -63,19 +60,14 @@ app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 @app.middleware("http")
 async def add_process_time_header(request: Request, call_next):
-    # catch legacy redirects from frontend
-    path = request.url.path
-    if "Login screen" in path or "Login%20screen" in path:
-        from fastapi.responses import RedirectResponse
-        return RedirectResponse(url="/login/index.html")
-        
+    # Đo thời gian xử lý request
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = str(process_time)
     return response
 
-# Router
+# Đăng ký các routes
 app.include_router(health_router, prefix=settings.api_prefix)
 app.include_router(auth_router, prefix=settings.api_prefix)
 app.include_router(attendance_router, prefix=f"{settings.api_prefix}/attendance", tags=["attendance"])
@@ -84,47 +76,48 @@ app.include_router(leaves_router, prefix=f"{settings.api_prefix}/leaves", tags=[
 app.include_router(payroll_router, prefix=f"{settings.api_prefix}/payroll", tags=["payroll"])
 app.include_router(salary_adj_router, prefix=f"{settings.api_prefix}/salary-adjustments", tags=["salary-adjustments"])
 app.include_router(announcement_router, prefix=settings.api_prefix, tags=["announcements"])
-# PUBLIC metadata endpoints - NO AUTH - separate prefix!
+app.include_router(face_attendance_router, prefix=f"{settings.api_prefix}/face-attendance", tags=["face-attendance"])
+app.include_router(gate_router, prefix=f"{settings.api_prefix}/gate", tags=["gate"])
+
+# Mount thư mục static cho uploads
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Endpoints metadata công khai - KHÔNG CẦN AUTH
 app.include_router(metadata_router, prefix="/public", tags=["metadata"])
 
-# ==================== FRONTEND HOSTING (SPA ROUTING) ====================
+# ==================== FRONTEND HOSTING ====================
 
-# Path to the frontend directory
+# Đường dẫn đến thư mục frontend
 FRONTEND_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "frontend", "finova"))
 
 if os.path.exists(FRONTEND_DIR):
-    # Mount only existing static directories
+    # Mount các thư mục static
     app.mount("/finova/js", StaticFiles(directory=os.path.join(FRONTEND_DIR, "js")), name="js")
     app.mount("/login", StaticFiles(directory=os.path.join(FRONTEND_DIR, "login")), name="login")
 
     @app.get("/finova/login")
     @app.get("/login")
     async def serve_login():
-        """Serve login page at a professional URL."""
+        """Serve the login page."""
         login_index = os.path.join(FRONTEND_DIR, "login", "index.html")
         return FileResponse(login_index)
 
     @app.get("/finova/{path:path}")
     async def serve_frontend(path: str):
-        """
-        Catch-all for /finova: 
-        1. If path looks like a file (has dot), try to serve it.
-        2. Otherwise serve index.html for SPA.
-        """
-        # Exclude login path from catch-all if it's already handled
+        # Nếu là login, serve trang login
         if path.strip("/") == "login":
             return FileResponse(os.path.join(FRONTEND_DIR, "login", "index.html"))
 
-        # If path is empty (it's just /finova/), serve index.html
+        # Nếu path rỗng, serve index.html
         if not path or path == "/":
             return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
-        # Check for root files like styles.css
+        # Kiểm tra xem có phải file không (như styles.css)
         file_path = os.path.join(FRONTEND_DIR, path)
         if os.path.isfile(file_path):
             return FileResponse(file_path)
 
-        # Everything else goes to index.html (SPA)
+        # Tất cả còn lại đều serve index.html (SPA)
         return FileResponse(os.path.join(FRONTEND_DIR, "index.html"))
 
     @app.get("/finova")

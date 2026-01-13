@@ -6,8 +6,8 @@ class Settings(BaseSettings):
 
     secret_key: str = "change_me"
     algorithm: str = "HS256"
-    access_token_expire_minutes: int = 480 # Extended to 8 hours for better testing experience
-    skip_strict_reset_on_reload: bool = True # Set to True to prevent data loss on every code save
+    access_token_expire_minutes: int = 480  # 8 giờ để kiểm tra
+    skip_strict_reset_on_reload: bool = True  # Tránh mất dữ liệu khi tải lại code
 
     postgres_host: str = "localhost"
     postgres_port: int = 5432
@@ -17,7 +17,7 @@ class Settings(BaseSettings):
 
     redis_url: str = "redis://localhost:6379/0"
 
-    cors_origins: str = "http://localhost:8080,http://localhost:3000,http://localhost:5500,http://127.0.0.1:5500"
+    cors_origins: str = "http://localhost:8080,http://127.0.0.1:8080"
 
     # Cài đặt Email
     MAIL_USERNAME: str = "your_email@example.com"

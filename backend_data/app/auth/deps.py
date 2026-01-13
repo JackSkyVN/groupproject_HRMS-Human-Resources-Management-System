@@ -1,7 +1,3 @@
-"""
-Authentication Dependencies - Sử dụng Employee model
-Cung cấp get_current_employee và role-based authorization
-"""
 from fastapi import Depends, HTTPException, status, Header
 from jose import jwt, JWTError
 from sqlalchemy.orm import Session
@@ -12,7 +8,6 @@ from app.models.roles import Role
 
 
 def _get_token_from_auth_header(authorization: str | None) -> str:
-    """Extract JWT token from Authorization header"""
     if not authorization:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -35,10 +30,6 @@ def get_current_employee(
     authorization: str | None = Header(default=None, alias="Authorization"),
     db: Session = Depends(get_db),
 ) -> Employee:
-    """
-    Get current logged-in employee from JWT token
-    Raises 401 if token invalid or employee not found
-    """
     token = _get_token_from_auth_header(authorization)
     
     try:
@@ -65,14 +56,6 @@ def get_current_employee(
 
 
 def require_role_level(max_level: int):
-    """
-    Dependency để yêu cầu role level <= max_level
-    Role levels: admin=1, hr_general=2, hr_department=3, staff=4
-    
-    Example:
-        require_role_level(2)  # Only admin and hr_general can access
-        require_role_level(3)  # Admin, hr_general, hr_department can access
-    """
     def wrapper(
         employee: Employee = Depends(get_current_employee),
         db: Session = Depends(get_db)
@@ -91,28 +74,21 @@ def require_role_level(max_level: int):
 
 
 def require_admin():
-    """Only admin (level 1) can access"""
     return require_role_level(1)
 
 
 def require_hr():
-    """HR and above (admin, hr_general, hr_department) can access"""
     return require_role_level(3)
 
 
-# ==================== BACKWARD COMPATIBILITY ====================
-# For old routes still using get_current_user and require_permission
+# Tương thích ngược với code cũ
 
-# Alias for old code compatibility
+# Alias cho code cũ
 get_current_user = get_current_employee
 
 
 def require_permission(code: str):
-    """
-    Backward compatibility function
-    Maps old permission codes to role levels
-    """
-    # Map permission codes to role levels
+    # Map permission codes sang role levels
     permission_to_level = {
         "employee.view": 3,  # HR and above
         "employee.create": 2,  # HR General and above
@@ -129,6 +105,6 @@ def require_permission(code: str):
         "performance.manage": 2,
     }
     
-    level = permission_to_level.get(code, 3)  # Default to HR level
+    level = permission_to_level.get(code, 3)  # Mặc định là HR level
     return require_role_level(level)
 

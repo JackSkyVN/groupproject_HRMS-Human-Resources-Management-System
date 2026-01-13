@@ -9,6 +9,6 @@ celery_app.conf.beat_schedule = {
     },
     "verify-attendance-logs": {
         "task": "verify_attendance_logs",
-        "schedule": crontab(minute="*/10"), # Run every 10 minutes
+        "schedule": crontab(minute="*/10"),  # Chạy mỗi 10 phút
     },
 }

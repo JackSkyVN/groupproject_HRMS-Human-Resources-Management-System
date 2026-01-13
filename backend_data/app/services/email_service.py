@@ -26,9 +26,6 @@ class EmailService:
         body: str,
         subtype: MessageType = MessageType.html
     ):
-        """
-        Send an email asynchronously.
-        """
         message = MessageSchema(
             subject=subject,
             recipients=recipients,
@@ -50,9 +47,6 @@ class EmailService:
         alert_type: str,
         details: str
     ):
-        """
-        Send a security alert email.
-        """
         subject = f"SECURITY ALERT: {alert_type}"
         body = f"""
         <h1>Security Alert</h1>
@@ -72,9 +66,6 @@ class EmailService:
         employee_id: str,
         reason: str
     ):
-        """
-        Send an alert for attendance verification failure.
-        """
         subject = "Attendance Verification Failed"
         body = f"""
         <h1>Attendance Verification Failed</h1>

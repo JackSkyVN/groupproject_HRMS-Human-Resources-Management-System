@@ -1,5 +1,5 @@
 /**
- * Dashboard Module - Overview and Recent Activity
+ * Module Dashboard - Tổng quan và Hoạt động gần đây
  */
 
 import { getState } from '../core/state.js';
@@ -11,7 +11,7 @@ export function renderDashboard() {
         const appData = getState();
         const roleLevel = parseInt(localStorage.getItem('role_level') || '4');
 
-        // Show loading state if still fetching initial data
+        // Hiển thị trạng thái loading nếu đang tải dữ liệu ban đầu
         if (appData.isInitialLoading) {
             return `
                 <div class="page-header"><h1>Loading Dashboard...</h1></div>
@@ -29,7 +29,7 @@ export function renderDashboard() {
         const activeEmployees = employees.filter(e => e.status === 'active').length;
         const pendingLeaves = (appData.leaveRequests || []).filter(l => l.status === 'pending').length;
 
-        // Today's attendance stats
+        // Thống kê chấm công hôm nay
         const todayStr = new Date().toISOString().split('T')[0];
         const todayRecords = (appData.attendance || []).filter(a => a.date === todayStr);
 
@@ -108,7 +108,7 @@ export function renderDashboard() {
                         </div>
                     </div>
                     <div class="stat-value">${pendingLeaves}</div>
-                    <div class="stat-description">Requests awaiting approval</div>
+                    <div class="stat-description">Waiting</div>
                 </div>
 
                 <div class="stat-card">
@@ -122,7 +122,7 @@ export function renderDashboard() {
                         </div>
                     </div>
                     <div class="stat-value">${(appData.announcements || []).length}</div>
-                    <div class="stat-description">Ongoing internal events</div>
+                    <div class="stat-description">Empty</div>
                 </div>
             </div>
 
@@ -134,9 +134,14 @@ export function renderDashboard() {
                     <div id="attendance-status-display" style="flex: 1;">
                         ${renderAttendanceStatus()}
                     </div>
-                    <div style="display: flex; gap: 12px;">
-                        <button id="main-checkin-btn" onclick="handleCheckIn()" class="btn btn-primary" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; padding: 12px 24px; font-weight: 600;">Check In</button>
-                        <button id="main-checkout-btn" onclick="handleCheckOut()" class="btn btn-secondary" style="padding: 12px 24px; font-weight: 600;">Check Out</button>
+                    <div style="display: flex; flex-direction: column; gap: 8px;">
+                        <div style="display: flex; gap: 12px;">
+                            <button id="main-checkin-btn" onclick="handleCheckIn()" class="btn btn-primary" style="background: linear-gradient(135deg, #3b82f6, #2563eb); border: none; padding: 12px 24px; font-weight: 600;">Check In</button>
+                            <button id="main-checkout-btn" onclick="handleCheckOut()" class="btn btn-secondary" style="padding: 12px 24px; font-weight: 600;">Check Out</button>
+                        </div>
+                        <div style="font-size: 0.75rem; color: #64748b; text-align: right;">
+                            <a href="#" onclick="window.navigateTo('myprofile/registration'); return false;" style="color: #6366f1; text-decoration: none; font-weight: 600;">Register Face ID →</a>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -248,7 +253,7 @@ function renderRecentActivity() {
         const appData = getState();
         let activities = [];
 
-        // Get latest leave requests
+        // Lấy các đơn xin nghỉ gần đây nhất
         (appData.leaveRequests || []).slice(0, 5).forEach(l => {
             activities.push({
                 name: l.employeeName || 'Unknown',
@@ -259,7 +264,7 @@ function renderRecentActivity() {
             });
         });
 
-        // Get latest attendance logs
+        // Lấy các log chấm công gần đây nhất
         (appData.attendance || []).slice(0, 5).forEach(a => {
             activities.push({
                 name: a.employeeName || 'Unknown',
@@ -320,8 +325,8 @@ function renderTeamWorkingStatus() {
     const appData = getState();
     const todayStr = new Date().toISOString().split('T')[0];
 
-    // Filter who is currently "In"
-    // Logically: In Main but not Out, OR In OT but not Out.
+    // Lọc những ai hiện đang "In"
+    // Logic: In Main nhưng chưa Out, HOẶC In OT nhưng chưa Out.
     const workingStaff = (appData.attendance || []).filter(a => {
         if (a.date !== todayStr) return false;
 
@@ -336,7 +341,7 @@ function renderTeamWorkingStatus() {
     if (workingStaff.length === 0) {
         return `
             <div style="text-align: center; padding: 30px 20px; color: #94a3b8;">
-                <p style="font-size: 0.85rem;">No staff currently active</p>
+                <p style="font-size: 0.85rem;">No employees currently active</p>
             </div>
         `;
     }
@@ -349,11 +354,11 @@ function renderTeamWorkingStatus() {
         return `
             <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid #f1f5f9;">
                 <div style="width: 36px; height: 36px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: #6366f1; font-size: 0.8rem; border: 2px solid #fff; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                    ${s.employeeName.split(' ').pop().charAt(0)}
+                    ${(s.employeeName || 'U').split(' ').pop().charAt(0)}
                 </div>
                 <div style="flex: 1;">
-                    <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">${s.employeeName}</div>
-                    <div style="font-size: 0.7rem; color: #64748b;">${shiftLabel} • In at ${startTime}</div>
+                    <div style="font-size: 0.85rem; font-weight: 600; color: #1e293b;">${s.employeeName || '-'}</div>
+                    <div style="font-size: 0.7rem; color: #64748b;">${shiftLabel} • In at ${startTime || '-'}</div>
                 </div>
                 <span class="badge badge-success" style="font-size: 9px; padding: 2px 6px;">Active</span>
             </div>

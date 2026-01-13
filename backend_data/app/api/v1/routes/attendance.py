@@ -32,6 +32,10 @@ class AttendanceOut(BaseModel):
     early_leave_minutes: int
     overtime_hours: float
     work_hours: float
+    snapshot_checkin: Optional[str] = None
+    snapshot_checkout: Optional[str] = None
+    face_score_checkin: Optional[float] = None
+    face_score_checkout: Optional[float] = None
 
     class Config:
         from_attributes = True
@@ -55,30 +59,37 @@ async def list_attendance(
     skip: int = 0,
     limit: int = 100
 ):
+    """List attendance records with filters."""
     current_role = db.get(Role, current_employee.role_id)
     level = current_role.role_level if current_role else 4
 
-    stmt = select(Attendance, Employee).\
-        join(Employee, Attendance.employee_id == Employee.employee_id)
+    # Sử dụng db.query để lấy dữ liệu điểm danh
+    query = db.query(Attendance).join(Employee, Attendance.employee_id == Employee.employee_id)
 
-    if level == 1 or level == 2:
-        pass
-    elif level == 3:
-        stmt = stmt.where(Employee.department_id == current_employee.department_id)
-    else:
-        stmt = stmt.where(Attendance.employee_id == current_employee.employee_id)
+    if level > 3:
+        # Staff chỉ được xem của chính mình
+        query = query.filter(Attendance.employee_id == current_employee.employee_id)
+        # BUSINESS LOGIC: Chỉ hiện attendance từ ngày hire trở đi
+        if current_employee.hire_date:
+            query = query.filter(Attendance.work_date >= current_employee.hire_date)
 
     if employee_id:
-        stmt = stmt.where(Attendance.employee_id == employee_id)
+        query = query.filter(Attendance.employee_id == employee_id)
+        # BUSINESS LOGIC: Filter theo hire date của employee được chọn
+        target_emp = db.get(Employee, employee_id)
+        if target_emp and target_emp.hire_date:
+            query = query.filter(Attendance.work_date >= target_emp.hire_date)
     if date_from:
-        stmt = stmt.where(Attendance.work_date >= date_from)
+        query = query.filter(Attendance.work_date >= date_from)
     if date_to:
-        stmt = stmt.where(Attendance.work_date <= date_to)
+        query = query.filter(Attendance.work_date <= date_to)
 
-    results = db.execute(stmt.offset(skip).limit(limit)).all()
+    results = query.order_by(Attendance.work_date.desc(), Attendance.attendance_id.desc())\
+                   .offset(skip).limit(limit).all()
     
     output = []
-    for att, emp in results:
+    for att in results:
+        emp = att.employee
         output.append({
             "attendance_id": att.attendance_id,
             "employee_id": emp.employee_id,
@@ -93,7 +104,11 @@ async def list_attendance(
             "late_minutes": att.late_minutes or 0,
             "early_leave_minutes": att.early_leave_minutes or 0,
             "overtime_hours": float(att.overtime_hours or 0),
-            "work_hours": float(att.work_hours or 0)
+            "work_hours": float(att.work_hours or 0),
+            "snapshot_checkin": att.snapshot_checkin,
+            "snapshot_checkout": att.snapshot_checkout,
+            "face_score_checkin": float(att.face_score_checkin) if att.face_score_checkin else None,
+            "face_score_checkout": float(att.face_score_checkout) if att.face_score_checkout else None
         })
     return output
 
@@ -102,11 +117,16 @@ async def check_in_manual(
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(get_current_employee)
 ):
-    """Ghi nhận Check-in (Main hoặc OT)"""
+    """Record a manual check-in (Main or OT)."""
     today = date.today()
     now = datetime.now()
     now_time = now.time()
     
+    # 0. BẢO MẬT: Kiểm tra Face ID (Trừ Admin)
+    current_role = db.get(Role, current_employee.role_id)
+    if (not current_employee.face_embedding or not current_employee.face_registered_at) and current_role.role_level > 1:
+        raise HTTPException(status_code=400, detail="Vui lòng đăng ký Face ID trước khi thực hiện điểm danh.")
+
     # 1. Lấy bản ghi hôm nay hoặc tạo mới
     att = db.query(Attendance).filter(
         Attendance.employee_id == current_employee.employee_id,
@@ -155,11 +175,16 @@ async def check_out_manual(
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(get_current_employee)
 ):
-    """Ghi nhận Check-out (Main hoặc OT)"""
+    """Record a manual check-out (Main or OT)."""
     today = date.today()
     now = datetime.now()
     now_time = now.time()
     
+    # 0. BẢO MẬT: Kiểm tra Face ID (Trừ Admin)
+    current_role = db.get(Role, current_employee.role_id)
+    if (not current_employee.face_embedding or not current_employee.face_registered_at) and current_role.role_level > 1:
+        raise HTTPException(status_code=400, detail="Vui lòng đăng ký Face ID trước khi thực hiện điểm danh.")
+
     att = db.query(Attendance).filter(
         Attendance.employee_id == current_employee.employee_id,
         Attendance.work_date == today
@@ -224,23 +249,44 @@ async def override_attendance(
     db: Session = Depends(get_db),
     current_employee: Employee = Depends(get_current_employee)
 ):
-    """Admin Manual Override: Chỉnh sửa bản ghi chấm công"""
-    current_role = db.get(Role, current_employee.role_id)
-    if not current_role or current_role.role_level > 2:
-        raise HTTPException(status_code=403, detail="Only Admins can override attendance")
-
+    """Override and recalculate attendance metrics."""
     att = db.get(Attendance, attendance_id)
     if not att:
         raise HTTPException(status_code=404, detail="Attendance record not found")
 
-    # Update timestamps if provided
+    current_role = db.get(Role, current_employee.role_id)
+    target_emp = db.get(Employee, att.employee_id)
+    target_role = db.get(Role, target_emp.role_id)
+
+    # Logic Override: L1/L2 có thể sửa lẫn nhau, nhưng KHÔNG AI tự sửa của mình
+    if current_employee.employee_id == target_emp.employee_id:
+        raise HTTPException(status_code=403, detail="You cannot edit your own attendance record.")
+
+    allowed = False
+    # 1. Standard Tiered Override
+    if current_role.role_level < target_role.role_level:
+        if current_role.role_level == 3:
+            # L3 chỉ cho phòng ban của họ
+            if target_emp.department_id == current_employee.department_id:
+                allowed = True
+        else:
+            allowed = True
+    
+    # 2. Phê duyệt chéo cho L1 & L2 (Cross-Approval)
+    elif current_role.role_level in [1, 2] and target_role.role_level in [1, 2]:
+        allowed = True
+
+    if not allowed:
+        raise HTTPException(status_code=403, detail="Insufficient permissions: You can only edit attendance for subordinates or peer top-level leaders.")
+
+    # Cập nhật timestamps nếu có
     if data.check_in_time is not None: att.check_in_time = data.check_in_time
     if data.check_out_time is not None: att.check_out_time = data.check_out_time
     if data.ot_check_in_time is not None: att.ot_check_in_time = data.ot_check_in_time
     if data.ot_check_out_time is not None: att.ot_check_out_time = data.ot_check_out_time
     if data.status: att.status = data.status
 
-    # Recalculate Logic
+    # Tính toán lại
     today = att.work_date
     
     # 1. Main Shift Metrics

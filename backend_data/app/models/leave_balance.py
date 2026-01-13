@@ -4,10 +4,7 @@ from app.core.database import Base
 
 
 class LeaveBalance(Base):
-    """
-    Bảng Leave_Balance - Số ngày phép còn lại
-    Theo dõi số ngày phép/năm cho từng loại nghỉ
-    """
+    """Bảng theo dõi số dư ngày nghỉ của nhân viên."""
     __tablename__ = "leave_balance"
 
     balance_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
@@ -19,11 +16,11 @@ class LeaveBalance(Base):
     used_days = Column(Numeric(5, 2), default=0, nullable=False)  # Số ngày đã dùng
     remaining_days = Column(Numeric(5, 2), nullable=False)  # Số ngày còn lại
 
-    # Unique constraint: one balance per employee per leave type per year
+    # Mỗi nhân viên có 1 balance cho mỗi loại nghỉ mỗi năm
     __table_args__ = (
         Index('idx_leave_balance_unique', 'employee_id', 'leave_type_id', 'year', unique=True),
     )
 
-    # Relationships
+    # Quan hệ (Relationships)
     employee = relationship("Employee", back_populates="leave_balances")
     leave_type = relationship("LeaveType", back_populates="leave_balances")
